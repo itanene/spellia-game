@@ -126,7 +126,7 @@
       <details>
         <summary>ルールとカード効果を見る</summary>
         <div class="rule-list" id="rule-list"></div>
-        <p class="tiny">全員同じデッキ（基本12枚、6人の時は10枚）。毎ターン、めくる人以外が1枚ずつ伏せて、めくる人が好きなだけめくって好きな所で止める（チキンレース方式）。全員がカードを置き終わったら終わり、一番ポイントが多い人の勝ち。ポイントはマイナスにもなる。</p>
+        <p class="tiny">全員同じデッキ（基本12枚、6人の時は10枚）。毎ターン、めくる人以外が1枚ずつ伏せて、めくる人が最低1枚・好きなだけめくって好きな所で止める（チキンレース方式）。全員がカードを置き終わったら終わり、一番ポイントが多い人の勝ち。開始は全員0ポイントで、ポイントはマイナスにもなる。</p>
       </details>
     </div>
     <p class="tiny">卒業制作「SPELLIA」ブラウザ版（ルール検証用）。実物のカードとは別に、パソコンやスマホのブラウザでそのまま遊べます。</p>
@@ -212,7 +212,7 @@ function newGame(n, mode, rng) {
     const deck = shuffled(baseDeck, rng);
     players.push({
       idx: i, name: i === 0 ? "あなた" : BOT_NAMES[i - 1], color: PLAYER_COLORS[i],
-      isBot: i !== 0, pts: 3, hand: deck.slice(0, 5), stock: deck.slice(5),
+      isBot: i !== 0, pts: 0, hand: deck.slice(0, 5), stock: deck.slice(5),
       placed: null, flippedPile: [], placedCount: 0,
       style: i === 0 ? null : BOT_STYLES[Math.floor(rng() * BOT_STYLES.length)],
     });
@@ -523,10 +523,9 @@ async function flipPhase() {
   st.flipStartPts = F.pts;
   renderScores();
   if (!F.isBot) {
-    setPhase(`${F.name} のめくり番`, "他の人のカードをタップしてめくろう。好きな所で「やめる」を押してね（暴走を引くと自動で終了）");
+    setPhase(`${F.name} のめくり番`, "他の人のカードをタップしてめくろう。最低1枚はめくってね（暴走を引くと自動で終了）");
     renderTable(true);
-    setActions(`<button class="act-btn" id="btn-stop">やめる（${st.flipCountThisTurn}枚めくった）</button>`);
-    $("btn-stop").addEventListener("click", () => finishFlipping());
+    showStopUI();
     busy = false;
   } else {
     setPhase(`${F.name} のめくり番`, "ボットがめくっているよ…");
@@ -562,9 +561,16 @@ async function humanFlip(ownerIdx) {
   await doFlip(ownerIdx);
   if (st.lastCard === "暴走" || !st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) { await sleep(500); return finishFlipping(); }
   renderTable(true);
+  showStopUI();
+  busy = false;
+}
+function showStopUI() {
+  if (st.flipCountThisTurn <= 0) {
+    setActions(`<span class="tiny">最低1枚はめくってね</span>`);
+    return;
+  }
   setActions(`<button class="act-btn" id="btn-stop">やめる（${st.flipCountThisTurn}枚めくった）</button>`);
   $("btn-stop").addEventListener("click", () => finishFlipping());
-  busy = false;
 }
 async function finishFlipping() {
   if (busy && st.players[st.flipper].isBot === false && st.finishing) return;
