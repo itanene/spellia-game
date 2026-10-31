@@ -631,6 +631,13 @@ function showResult() {
    「その人から見える状態」だけを送る。あいた席はボット。
    ========================================================= */
 const NET_PREFIX = "spellia-room-v1-";
+const NET_OPTS = { config: { iceServers: [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turns:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
+] } };
+let joinTimer = null;
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 let peer = null, isHost = false, mySeat = 0, roomCode = "", roomSize = 4;
 let guestConns = {};        // ホスト側： seat -> conn
@@ -685,7 +692,7 @@ $("btn-host").addEventListener("click", () => {
   cleanupNet();
   isHost = true; mySeat = 0; MYIDX = 0; roomSize = selCount; roomCode = makeCode();
   netMsg("部屋を作っています…");
-  peer = new Peer(NET_PREFIX + roomCode);
+  peer = new Peer(NET_PREFIX + roomCode, NET_OPTS);
   peer.on("open", () => { members = [{ seat: 0, name: myName() }]; netMsg(""); showLobby(); });
   peer.on("connection", conn => {
     conn.on("data", d => hostOnGuestData(conn, d));
@@ -743,9 +750,11 @@ $("btn-join").addEventListener("click", () => {
   cleanupNet();
   isHost = false; roomCode = code;
   netMsg("部屋を探しています…");
-  peer = new Peer();
+  peer = new Peer(NET_OPTS);
+  joinTimer = setTimeout(() => { if (!inLobby && !ONLINE) netMsg("つながらなかった…ホストがページを開いているか、コードが合っているか確認して、もう一度押してね"); }, 15000);
   peer.on("open", () => {
     hostConn = peer.connect(NET_PREFIX + code, { reliable: true });
+    hostConn.on("iceStateChanged", stt => { if (stt === "failed" || stt === "disconnected") netMsg("回線がつながらなかった…電波の良い場所でもう一度試してね"); });
     hostConn.on("open", () => hostConn.send({ t: "join", name: myName() }));
     hostConn.on("data", d => guestOnData(d));
     hostConn.on("close", () => guestHostGone());
@@ -761,7 +770,7 @@ function guestHostGone() {
   if (was) { showTitle(); netMsg("ホストとの接続が切れました。"); }
 }
 function guestOnData(d) {
-  if (d.t === "welcome") { mySeat = d.seat; MYIDX = d.seat; roomSize = d.size; netMsg(""); showLobby(); }
+  if (d.t === "welcome") { if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; } mySeat = d.seat; MYIDX = d.seat; roomSize = d.size; netMsg(""); showLobby(); }
   else if (d.t === "lobby") { members = d.members; roomSize = d.size; renderLobby(); }
   else if (d.t === "error") { netMsg(d.msg); if (inLobby) $("lobby-status").textContent = d.msg; }
   else if (d.t === "start") {
