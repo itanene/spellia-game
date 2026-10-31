@@ -123,7 +123,38 @@
         <p class="tiny">全員同じデッキ（基本12枚、6人の時は10枚）。毎ターン、めくる人以外が1枚ずつ伏せて、めくる人が最低1枚・好きなだけめくって好きな所で止める（チキンレース方式）。全員がカードを置き終わったら終わり、一番ポイントが多い人の勝ち。開始は全員0ポイントで、ポイントはマイナスにもなる。</p>
       </details>
     </div>
+    <div class="panel">
+      <h3>ネット対戦（お手軽方式）</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <span class="tiny">名前：</span>
+        <input id="net-name" type="text" maxlength="10" placeholder="プレイヤー" style="background:rgba(255,255,255,.06);color:#f3e9d2;border:1px solid rgba(243,233,210,.35);border-radius:8px;padding:8px 10px;font-size:15px;width:150px">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="act-btn" id="btn-host">部屋を作る（人数は上の設定）</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="net-code" type="text" maxlength="4" placeholder="部屋コード" style="background:rgba(255,255,255,.06);color:#f3e9d2;border:1px solid rgba(243,233,210,.35);border-radius:8px;padding:8px 10px;font-size:15px;width:120px;text-transform:uppercase">
+        <button class="act-btn ghost" id="btn-join">部屋に入る</button>
+      </div>
+      <p class="tiny" id="net-msg"></p>
+      <p class="tiny">友達と遊ぶ用です。部屋を作った人がページを開いている間だけ対戦できます。</p>
+    </div>
     <p class="tiny">卒業制作「SPELLIA」ブラウザ版（ルール検証用）。実物のカードとは別に、パソコンやスマホのブラウザでそのまま遊べます。</p>
+  </section>
+
+  <!-- ロビー -->
+  <section id="screen-lobby" class="hidden">
+    <p class="logo" style="font-size:30px">ネット対戦ロビー</p>
+    <div class="panel">
+      <p>部屋コード：<b id="lobby-code" style="font-size:28px;letter-spacing:3px"></b></p>
+      <p class="tiny" id="lobby-status"></p>
+      <div id="lobby-members"></div>
+      <div class="actions" style="margin-top:18px">
+        <button class="act-btn hidden" id="btn-netstart">このメンバーで対戦開始</button>
+        <button class="act-btn ghost" id="btn-leave">やめる</button>
+      </div>
+      <p class="tiny">ホストがページを閉じると対戦は終わります。</p>
+    </div>
   </section>
 
   <!-- ゲーム -->
@@ -373,6 +404,7 @@ function botDecideFlip(st) {
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let st = null, selCount = 4, busy = false;
+let MYIDX = 0, ONLINE = false;
 
 $("rule-list").innerHTML = Object.entries(CARD_INFO)
   .map(([name, i]) => `<b>${i.icon}${name}</b>（${i.n}枚）：${i.text}`).join("<br>");
@@ -395,6 +427,7 @@ function showTitle() {
   $("screen-result").classList.add("hidden");
 }
 function startGame() {
+  ONLINE = false; MYIDX = 0;
   st = newGame(selCount, "rotate", Math.random);
   $("screen-title").classList.add("hidden");
   $("screen-result").classList.add("hidden");
@@ -417,7 +450,7 @@ function renderScores() {
   $("scoreboard").innerHTML = st.players.map(p => {
     const rank = p.pts === mx ? `<span class="rank">1位</span>` : p.pts === mn ? `<span class="rank">最下位</span>` : "";
     const pile = p.flippedPile.length ? p.flippedPile.map(c => CARD_INFO[c].icon).join("") : "―";
-    return `<div class="score ${p.idx === st.flipper ? "flipper" : ""} ${p.idx === 0 ? "me" : ""}">
+    return `<div class="score ${p.idx === st.flipper ? "flipper" : ""} ${p.idx === MYIDX ? "me" : ""}">
       <div class="nm"><span><span class="dot" style="background:${p.color}"></span>${p.name}${p.isBot && p.style ? `<span style="color:var(--dim);font-size:10px"> ${p.style.name}</span>` : ""}${p.idx === st.flipper ? "（めくる人）" : ""}</span>${rank}</div>
       <div class="pt">${p.pts}<small> 点 ・ 残り${p.hand.length + p.stock.length}枚</small></div>
       <div class="pile">めくられた：${pile}</div></div>`;
@@ -460,7 +493,7 @@ function renderTable(tappable) {
   }
 }
 function renderHand(onPick) {
-  const me = st.players[0];
+  const me = st.players[MYIDX];
   $("hand-label").textContent = onPick ? `あなたの手札（山札 残り${me.stock.length}枚）— 伏せるカードを1枚選んでね` : "";
   $("hand").innerHTML = onPick ? me.hand.map((c, i) => {
     const info = CARD_INFO[c];
@@ -587,6 +620,407 @@ function showResult() {
   const order = st.players.slice().sort((a, b) => b.pts - a.pts);
   $("result-list").innerHTML = order.map((p, i) =>
     `<div class="result-row ${i === 0 ? "win" : ""}"><span>${i + 1}位　${p.name}${i === 0 ? " 👑" : ""}</span><span>${p.pts} 点</span></div>`).join("");
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+"use strict";
+/* =========================================================
+   ネット対戦（PeerJS・ホスト方式）
+   ホストのブラウザが本当のゲーム状態を持ち、ゲストには
+   「その人から見える状態」だけを送る。あいた席はボット。
+   ========================================================= */
+const NET_PREFIX = "spellia-room-v1-";
+const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+let peer = null, isHost = false, mySeat = 0, roomCode = "", roomSize = 4;
+let guestConns = {};        // ホスト側： seat -> conn
+let hostConn = null;        // ゲスト側： ホストへの conn
+let members = [];           // ロビー参加者 [{seat, name}]
+let inLobby = false, gameStarted = false;
+let netPhase = "lobby";     // ホスト側の進行フェイズ
+let netWaiting = new Set(); // ホスト側： まだ伏せていない人間の seat
+let pendingLog = [];        // 次の送信に同梱するログ行
+let guestPlaced = false;    // ゲスト側： このターンもう伏せたか
+
+function netMsg(t) { const el = $("net-msg"); if (el) el.textContent = t || ""; }
+function myName() { const v = ($("net-name").value || "").trim(); return v ? v.slice(0, 10) : "プレイヤー"; }
+function makeCode() { let c = ""; for (let i = 0; i < 4; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]; return c; }
+function peerReady() { return typeof Peer !== "undefined"; }
+
+function cleanupNet() {
+  if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
+  guestConns = {}; hostConn = null; members = [];
+  inLobby = false; gameStarted = false; ONLINE = false;
+}
+$("btn-start").addEventListener("click", () => cleanupNet());
+$("btn-again").addEventListener("click", () => cleanupNet());
+$("btn-quit").addEventListener("click", () => cleanupNet());
+$("btn-leave").addEventListener("click", () => { cleanupNet(); showTitle(); });
+
+/* ===== ロビー表示 ===== */
+function showLobby() {
+  inLobby = true;
+  $("screen-title").classList.add("hidden");
+  $("screen-game").classList.add("hidden");
+  $("screen-result").classList.add("hidden");
+  $("screen-lobby").classList.remove("hidden");
+  $("lobby-code").textContent = roomCode;
+  $("btn-netstart").classList.toggle("hidden", !isHost);
+  renderLobby();
+}
+function renderLobby() {
+  $("lobby-members").innerHTML = members.slice().sort((a, b) => a.seat - b.seat).map(m =>
+    `<div class="result-row"><span>${m.seat + 1}番席　${m.name}${m.seat === 0 ? "（ホスト）" : ""}${m.seat === mySeat ? "（あなた）" : ""}</span></div>`).join("")
+    + `<p class="tiny">${members.length} / ${roomSize} 人が集まっています。あいている席にはボットが入ります。</p>`;
+  $("lobby-status").textContent = isHost ? "友達に部屋コードを伝えてね。全員そろわなくても始められます。" : "ホストが対戦を開始するのを待っています…";
+}
+function broadcastLobby() {
+  renderLobby();
+  for (const seat in guestConns) { const c = guestConns[seat]; if (c && c.open) c.send({ t: "lobby", members, size: roomSize }); }
+}
+
+/* ===== ホスト：部屋を作る ===== */
+$("btn-host").addEventListener("click", () => {
+  if (!peerReady()) return netMsg("ネット対戦の読み込みに失敗しました。ページを開き直してみてね。");
+  cleanupNet();
+  isHost = true; mySeat = 0; MYIDX = 0; roomSize = selCount; roomCode = makeCode();
+  netMsg("部屋を作っています…");
+  peer = new Peer(NET_PREFIX + roomCode);
+  peer.on("open", () => { members = [{ seat: 0, name: myName() }]; netMsg(""); showLobby(); });
+  peer.on("connection", conn => {
+    conn.on("data", d => hostOnGuestData(conn, d));
+    conn.on("close", () => hostOnGuestGone(conn));
+  });
+  peer.on("error", e => {
+    if (e.type === "unavailable-id") { cleanupNet(); netMsg("部屋コードが重なってしまった。もう一度押してね。"); }
+    else netMsg("接続エラー：" + e.type);
+  });
+});
+
+function hostOnGuestData(conn, d) {
+  if (d.t === "join") {
+    if (gameStarted) { conn.send({ t: "error", msg: "対戦はもう始まっています" }); return; }
+    let seat = -1;
+    for (let s = 1; s < roomSize; s++) if (!members.some(m => m.seat === s)) { seat = s; break; }
+    if (seat < 0) { conn.send({ t: "error", msg: "部屋がいっぱいです" }); return; }
+    conn.__seat = seat;
+    guestConns[seat] = conn;
+    members.push({ seat, name: (d.name || "プレイヤー").slice(0, 10) });
+    conn.send({ t: "welcome", seat, size: roomSize });
+    broadcastLobby();
+    return;
+  }
+  const seat = conn.__seat;
+  if (seat == null) return;
+  hostGameAction(seat, d);
+}
+function hostOnGuestGone(conn) {
+  const seat = conn.__seat;
+  if (seat == null) return;
+  delete guestConns[seat];
+  members = members.filter(m => m.seat !== seat);
+  if (!gameStarted) { broadcastLobby(); return; }
+  // 対戦中なら、その席はボットに引き継ぐ
+  const p = st.players[seat];
+  if (p && !p.isBot) {
+    p.isBot = true; p.style = BOT_STYLES[Math.floor(Math.random() * BOT_STYLES.length)];
+    netLogPush(`${p.name} の接続が切れたので、ボットが引き継ぎます`);
+    if (netPhase === "place" && netWaiting.has(seat)) {
+      p.placed = botChoosePlace(st, seat); p.placedCount++;
+      netWaiting.delete(seat);
+      if (netWaiting.size === 0) { netLogPush("全員がカードを伏せた。"); broadcastState("place"); netFlipPhase(); return; }
+    }
+    broadcastState(netPhase); netRenderHost();
+    if (netPhase === "flip" && st.flipper === seat) netBotFlipRun();
+  }
+}
+
+/* ===== ゲスト：部屋に入る ===== */
+$("btn-join").addEventListener("click", () => {
+  if (!peerReady()) return netMsg("ネット対戦の読み込みに失敗しました。ページを開き直してみてね。");
+  const code = ($("net-code").value || "").trim().toUpperCase();
+  if (code.length !== 4) return netMsg("部屋コードは4文字だよ。ホストに聞いてね。");
+  cleanupNet();
+  isHost = false; roomCode = code;
+  netMsg("部屋を探しています…");
+  peer = new Peer();
+  peer.on("open", () => {
+    hostConn = peer.connect(NET_PREFIX + code, { reliable: true });
+    hostConn.on("open", () => hostConn.send({ t: "join", name: myName() }));
+    hostConn.on("data", d => guestOnData(d));
+    hostConn.on("close", () => guestHostGone());
+  });
+  peer.on("error", e => {
+    if (e.type === "peer-unavailable") netMsg("その部屋が見つからなかった…コードを確認してね。");
+    else netMsg("接続エラー：" + e.type);
+  });
+});
+function guestHostGone() {
+  const was = inLobby || ONLINE;
+  cleanupNet();
+  if (was) { showTitle(); netMsg("ホストとの接続が切れました。"); }
+}
+function guestOnData(d) {
+  if (d.t === "welcome") { mySeat = d.seat; MYIDX = d.seat; roomSize = d.size; netMsg(""); showLobby(); }
+  else if (d.t === "lobby") { members = d.members; roomSize = d.size; renderLobby(); }
+  else if (d.t === "error") { netMsg(d.msg); if (inLobby) $("lobby-status").textContent = d.msg; }
+  else if (d.t === "start") {
+    ONLINE = true; gameStarted = true; inLobby = false;
+    $("screen-lobby").classList.add("hidden");
+    $("screen-game").classList.remove("hidden");
+    $("mode-label").textContent = "ネット対戦　部屋 " + roomCode;
+    $("log").innerHTML = "";
+    addLog(`<span class="hd">ネット対戦開始。</span>`);
+  }
+  else if (d.t === "state") applySnap(d);
+}
+
+/* ===== ホスト：対戦開始と進行 ===== */
+$("btn-netstart").addEventListener("click", () => { if (isHost && !gameStarted) netStartGame(); });
+
+function netStartGame() {
+  ONLINE = true; gameStarted = true; inLobby = false; MYIDX = 0; mySeat = 0;
+  st = newGame(roomSize, "rotate", Math.random);
+  st.players[0].name = myName(); st.players[0].isBot = false; st.players[0].style = null;
+  for (let s = 1; s < roomSize; s++) {
+    const m = members.find(x => x.seat === s);
+    if (m) { st.players[s].name = m.name; st.players[s].isBot = false; st.players[s].style = null; }
+  }
+  $("screen-lobby").classList.add("hidden");
+  $("screen-title").classList.add("hidden");
+  $("screen-result").classList.add("hidden");
+  $("screen-game").classList.remove("hidden");
+  $("mode-label").textContent = "ネット対戦　部屋 " + roomCode;
+  $("log").innerHTML = "";
+  addLog(`<span class="hd">ネット対戦開始。</span>最初の親は ${st.players[st.parent].name}。`);
+  for (const seat in guestConns) { const c = guestConns[seat]; if (c && c.open) c.send({ t: "start" }); }
+  netNextTurn();
+}
+
+function netLogPush() {
+  for (const line of arguments) { addLog(line); pendingLog.push(line); }
+}
+function snapFor(seat) {
+  return {
+    turn: st.turn, flipper: st.flipper, parent: st.parent, over: st.over,
+    deckSize: st.deckSize, flipCount: st.flipCountThisTurn,
+    flipped: [...st.flippedOwners], pending: st.pendingKinjutsu.slice(),
+    players: st.players.map(p => ({
+      idx: p.idx, name: p.name, color: p.color, isBot: p.isBot,
+      styleName: p.isBot && p.style ? p.style.name : null,
+      pts: p.pts, placedCount: p.placedCount, pile: p.flippedPile.slice(),
+      handCount: p.hand.length, stockCount: p.stock.length,
+      hand: p.idx === seat ? p.hand.slice() : null,
+      placed: p.placed ? (st.flippedOwners.has(p.idx) || p.idx === seat ? p.placed : "伏せ") : null,
+    })),
+  };
+}
+function broadcastState(phase) {
+  const logs = pendingLog.splice(0);
+  for (const seat in guestConns) {
+    const c = guestConns[seat];
+    if (c && c.open) c.send({ t: "state", phase, snap: snapFor(+seat), log: logs });
+  }
+}
+
+async function netNextTurn() {
+  if (st.over) { broadcastState("over"); showResult(); return; }
+  st.flipper = decideFlipper(st);
+  for (const p of st.players) {
+    if (!p.isBot) continue;
+    if (p.idx !== st.flipper && p.placedCount < st.deckSize) { p.placed = botChoosePlace(st, p.idx); p.placedCount += 1; }
+  }
+  netWaiting = new Set(st.players.filter(p => !p.isBot && p.idx !== st.flipper && p.placedCount < st.deckSize).map(p => p.idx));
+  netPhase = "place";
+  if (netWaiting.size === 0) { netLogPush("全員がカードを伏せた。"); broadcastState("place"); netFlipPhase(); return; }
+  broadcastState("place");
+  netRenderHost();
+}
+
+function hostApplyPlace(seat, cardName) {
+  const p = st.players[seat];
+  if (!p || !netWaiting.has(seat)) return;
+  const i = p.hand.indexOf(cardName);
+  if (i < 0) return;
+  p.placed = p.hand.splice(i, 1)[0]; p.placedCount += 1;
+  netWaiting.delete(seat);
+  if (netWaiting.size === 0) { netLogPush("全員がカードを伏せた。"); broadcastState("place"); netFlipPhase(); return; }
+  broadcastState("place");
+  netRenderHost();
+}
+function hostGameAction(seat, d) {
+  if (!st || st.over) return;
+  if (d.t === "place" && netPhase === "place") hostApplyPlace(seat, d.card);
+  else if (d.t === "flip" && netPhase === "flip" && st.flipper === seat) netDoFlip(d.target);
+  else if (d.t === "stop" && netPhase === "flip" && st.flipper === seat && st.flipCountThisTurn >= 1) netFinishFlipping();
+}
+
+async function netFlipPhase() {
+  netPhase = "flip";
+  const F = st.players[st.flipper];
+  st.flipStartPts = F.pts;
+  broadcastState("flip");
+  netRenderHost();
+  if (F.isBot) { await sleep(700); netBotFlipRun(); }
+}
+async function netBotFlipRun() {
+  while (netPhase === "flip") {
+    const t = botDecideFlip(st);
+    if (t < 0) break;
+    await netDoFlip(t);
+    await sleep(620);
+    if (st.lastCard === "暴走") break;
+    if (!st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) break;
+  }
+  if (netPhase === "flip") netFinishFlipping();
+}
+async function netDoFlip(ownerIdx) {
+  if (netPhase !== "flip") return;
+  const O = st.players[ownerIdx];
+  if (!O || !O.placed || O.idx === st.flipper || st.flippedOwners.has(ownerIdx)) return;
+  st.lastCard = O.placed;
+  st.flipCountThisTurn += 1;
+  const events = [];
+  applyFlip(st, ownerIdx, events);
+  st.flippedOwners.add(ownerIdx);
+  netLogPush(...events);
+  broadcastState("flip");
+  netRenderHost();
+  if (st.lastCard === "暴走" || !st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) {
+    await sleep(500);
+    netFinishFlipping();
+  }
+}
+async function netFinishFlipping() {
+  if (netPhase !== "flip") return;
+  netPhase = "settle";
+  const events = [];
+  settleTurn(st, events);
+  netLogPush(...events.map(e => `<span class="hd">${e}</span>`));
+  broadcastState("settle");
+  netRenderHost();
+  await sleep(1000);
+  netLogPush(`― ${st.turn + 1}ターン目が終わった ―`);
+  endTurnBookkeeping(st);
+  netNextTurn();
+}
+
+/* ===== ホスト側の描画と入力 ===== */
+function netRenderHandPicker(cb) {
+  const me = st.players[MYIDX];
+  $("hand-label").textContent = `あなたの手札（山札 残り${me.stock.length}枚）— 伏せるカードを1枚選んでね`;
+  $("hand").innerHTML = me.hand.map((c, i) => {
+    const info = CARD_INFO[c];
+    return `<div class="card" data-hand="${i}"><div class="face front" style="position:relative">
+      <div class="icon">${info.icon}</div><div class="cname">${c}</div><div class="ctext">${info.text}</div>
+    </div></div>`;
+  }).join("");
+  document.querySelectorAll("[data-hand]").forEach(el =>
+    el.addEventListener("click", () => cb(me.hand[+el.dataset.hand])));
+}
+function markTappable(cb) {
+  for (const p of st.players) {
+    if (p.idx === st.flipper || st.flippedOwners.has(p.idx) || !p.placed) continue;
+    const el = document.querySelector(`[data-slot="${p.idx}"] .card`);
+    if (el) { el.classList.add("tappable"); el.addEventListener("click", () => cb(p.idx)); }
+  }
+}
+function netRenderHost() {
+  renderScores();
+  renderTable(false);
+  const F = st.players[st.flipper];
+  if (netPhase === "place") {
+    if (netWaiting.has(0)) {
+      setPhase(`${st.turn + 1}ターン目`, `めくる人：${F.name}。伏せるカードを1枚選んでね`);
+      netRenderHandPicker(card => hostApplyPlace(0, card));
+      setActions("");
+    } else {
+      setPhase(`${st.turn + 1}ターン目`, netWaiting.size ? "他の人が伏せるのを待っているよ…" : `めくる人：${F.name}`);
+      renderHand(false);
+      setActions("");
+    }
+  } else if (netPhase === "flip") {
+    renderHand(false);
+    if (st.flipper === 0) {
+      setPhase("あなたのめくり番", "他の人のカードをタップしてめくろう。最低1枚はめくってね（暴走を引くと自動で終了）");
+      markTappable(idx => netDoFlip(idx));
+      if (st.flipCountThisTurn <= 0) setActions(`<span class="tiny">最低1枚はめくってね</span>`);
+      else {
+        setActions(`<button class="act-btn" id="btn-stop">やめる（${st.flipCountThisTurn}枚めくった）</button>`);
+        $("btn-stop").addEventListener("click", () => netFinishFlipping());
+      }
+    } else {
+      setPhase(`${F.name} のめくり番`, F.isBot ? "ボットがめくっているよ…" : `${F.name} がめくっているよ…`);
+      setActions("");
+    }
+  } else {
+    renderHand(false);
+    setActions("");
+  }
+}
+
+/* ===== ゲスト側：状態を受けて描画 ===== */
+function applySnap(d) {
+  const snap = d.snap;
+  st = {
+    n: snap.players.length, turn: snap.turn, flipper: snap.flipper, parent: snap.parent,
+    deckSize: snap.deckSize, flipCountThisTurn: snap.flipCount, over: snap.over,
+    flippedOwners: new Set(snap.flipped), pendingKinjutsu: snap.pending,
+    players: snap.players.map(p => ({
+      idx: p.idx, name: p.name, color: p.color, isBot: p.isBot,
+      style: p.styleName ? { name: p.styleName } : null,
+      pts: p.pts, placedCount: p.placedCount, flippedPile: p.pile,
+      hand: p.idx === mySeat ? (p.hand || []) : Array(p.handCount).fill("魔石"),
+      stock: Array(p.stockCount).fill("魔石"),
+      placed: p.placed === "伏せ" ? "魔石" : p.placed,
+    })),
+  };
+  MYIDX = mySeat;
+  for (const l of d.log || []) addLog(l);
+  if (snap.over) { showResult(); return; }
+  netRenderGuest(d.phase);
+}
+function netRenderGuest(phase) {
+  renderScores();
+  renderTable(false);
+  const F = st.players[st.flipper];
+  const me = st.players[mySeat];
+  if (phase === "place") {
+    const need = me.idx !== st.flipper && me.placedCount < st.deckSize && !me.placed;
+    if (need && !guestPlaced) {
+      setPhase(`${st.turn + 1}ターン目`, `めくる人：${F.name}。伏せるカードを1枚選んでね`);
+      netRenderHandPicker(card => {
+        guestPlaced = true;
+        hostConn.send({ t: "place", card });
+        renderHand(false);
+        setPhase(`${st.turn + 1}ターン目`, "他の人が伏せるのを待っているよ…");
+      });
+      setActions("");
+    } else {
+      guestPlaced = !!me.placed ? guestPlaced : false;
+      setPhase(`${st.turn + 1}ターン目`, st.flipper === mySeat ? "あなたはめくる人。カードは置かないよ" : "他の人が伏せるのを待っているよ…");
+      renderHand(false);
+      setActions("");
+    }
+  } else if (phase === "flip") {
+    guestPlaced = false;
+    renderHand(false);
+    if (st.flipper === mySeat) {
+      setPhase("あなたのめくり番", "他の人のカードをタップしてめくろう。最低1枚はめくってね（暴走を引くと自動で終了）");
+      markTappable(idx => hostConn.send({ t: "flip", target: idx }));
+      if (st.flipCountThisTurn <= 0) setActions(`<span class="tiny">最低1枚はめくってね</span>`);
+      else {
+        setActions(`<button class="act-btn" id="btn-stop">やめる（${st.flipCountThisTurn}枚めくった）</button>`);
+        $("btn-stop").addEventListener("click", () => hostConn.send({ t: "stop" }));
+      }
+    } else {
+      setPhase(`${F.name} のめくり番`, `${F.name} がめくっているよ…`);
+      setActions("");
+    }
+  } else {
+    renderHand(false);
+    setActions("");
+  }
 }
 </script>
 </body>
