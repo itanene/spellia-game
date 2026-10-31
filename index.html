@@ -119,7 +119,6 @@
       <h3>めくる人の決め方</h3>
       <div class="opt-row" id="opt-mode">
         <button class="opt sel" data-v="rotate">時計回り</button>
-        <button class="opt" data-v="last">最下位の人</button>
         <button class="opt" data-v="shuffle">シャッフル周回</button>
         <button class="opt" data-v="random">ランダム</button>
       </div>
@@ -127,7 +126,7 @@
       <details>
         <summary>ルールとカード効果を見る</summary>
         <div class="rule-list" id="rule-list"></div>
-        <p class="tiny">全員同じ12枚のデッキ。毎ターン全員が1枚伏せて、めくる人が他の人のカードを好きなだけめくって好きな所で止める（チキンレース方式）。ポイントはマイナスにもなる。12ターン終わって一番ポイントが多い人の勝ち。</p>
+        <p class="tiny">全員同じデッキ（基本12枚、6人の時は10枚）。毎ターン、めくる人以外が1枚ずつ伏せて、めくる人が好きなだけめくって好きな所で止める（チキンレース方式）。全員がカードを置き終わったら終わり、一番ポイントが多い人の勝ち。ポイントはマイナスにもなる。</p>
       </details>
     </div>
     <p class="tiny">卒業制作「SPELLIA」ブラウザ版（ルール検証用）。実物のカードとは別に、パソコンやスマホのブラウザでそのまま遊べます。</p>
@@ -172,7 +171,7 @@ const CARD_INFO = {
   "悪戯":  {icon:"🦊", text:"めくった人は持ち主に2P渡す", n:2},
   "暴走":  {icon:"🐎", text:"めくった人 +1して、そのターンのめくり終了", n:1},
   "祝福":  {icon:"🕊️", text:"1位は全員に1P渡す", n:1},
-  "主席":  {icon:"🦅", text:"めくった人が今1位なら+3、ちがうなら+1", n:1},
+  "主席":  {icon:"🦅", text:"めくった人は持ち主からもらう。持ち主が今1位なら3P、ちがうなら1P", n:1},
   "使い魔":{icon:"🐈‍⬛", text:"めくった人と持ち主 +2ずつ", n:1},
   "禁術":  {icon:"🐉", text:"最後に発動。そのターンまだポイントが増えてなければ+4、増えてたら-1", n:1},
   "天秤":  {icon:"⚖️", text:"めくられたら持ち主から2Pもらう。めくられなかったら持ち主が全員から1Pずつもらう（自分のめくり番では発動しない）", n:1},
@@ -181,10 +180,19 @@ const CARD_INFO = {
 };
 const DECK_LIST = [];
 for (const [name, info] of Object.entries(CARD_INFO)) for (let i = 0; i < info.n; i++) DECK_LIST.push(name);
+function deckFor(n) {
+  if (n !== 6) return DECK_LIST;
+  const list = [];
+  for (const [name, info] of Object.entries(CARD_INFO)) {
+    const c = (name === "魔石" || name === "悪戯") ? 1 : info.n;
+    for (let i = 0; i < c; i++) list.push(name);
+  }
+  return list;
+}
 
 const PLAYER_COLORS = ["#0f766e", "#7c3aed", "#dc2626", "#2563eb", "#d97706", "#db2777"];
 const BOT_NAMES = ["ルナ", "シエル", "ノア", "ミオ", "レン"];
-const MODE_LABEL = {rotate:"時計回り", last:"最下位の人", shuffle:"シャッフル周回", random:"ランダム"};
+const MODE_LABEL = {rotate:"時計回り", shuffle:"シャッフル周回", random:"ランダム"};
 
 function shuffled(arr, rng) {
   const a = arr.slice();
@@ -193,17 +201,19 @@ function shuffled(arr, rng) {
 }
 
 function newGame(n, mode, rng) {
+  const baseDeck = deckFor(n);
   const players = [];
   for (let i = 0; i < n; i++) {
-    const deck = shuffled(DECK_LIST, rng);
+    const deck = shuffled(baseDeck, rng);
     players.push({
       idx: i, name: i === 0 ? "あなた" : BOT_NAMES[i - 1], color: PLAYER_COLORS[i],
       isBot: i !== 0, pts: 3, hand: deck.slice(0, 5), stock: deck.slice(5),
-      placed: null, flippedPile: [],
+      placed: null, flippedPile: [], placedCount: 0,
     });
   }
   return {
     n, mode, rng, turn: 0, players, parent: Math.floor(rng() * n),
+    deckSize: baseDeck.length, deckList: baseDeck,
     lapOrder: shuffled([...Array(n).keys()], rng), prevFlipper: -1,
     flipper: -1, flippedOwners: new Set(), pendingKinjutsu: [], gained: false,
     flipCountThisTurn: 0, over: false,
@@ -218,11 +228,7 @@ function decideFlipper(st) {
     if (turn % n === 0 && turn > 0) st.lapOrder = shuffled([...Array(n).keys()], st.rng);
     return st.lapOrder[turn % n];
   }
-  // last: 最初の1周は親から時計回り、その後は最下位（同点なら前のめくり手から時計回りで一番近い人）
-  if (turn < n) return (st.parent + turn) % n;
-  const mn = Math.min(...st.players.map(p => p.pts));
-  const cand = st.players.filter(p => p.pts === mn).map(p => p.idx);
-  return cand.reduce((a, b) => ((a - st.prevFlipper - 1 + n * 2) % n) <= ((b - st.prevFlipper - 1 + n * 2) % n) ? a : b);
+  return (st.parent + turn) % n;
 }
 
 /* 効果を適用し、ログ行の配列を返す。禁術は pendingKinjutsu に積むだけ */
@@ -239,7 +245,7 @@ function applyFlip(st, ownerIdx, events) {
       for (const q of st.players) if (q !== g) { g.pts -= 1; q.pts += 1; }
     events.push(`祝福：1位が全員に1P渡した`);
   }
-  else if (card === "主席") { const v = F.pts === Math.max(...pts()) ? 3 : 1; F.pts += v; events.push(`${nm(F)} は主席で +${v}`); }
+  else if (card === "主席") { const v = O.pts === Math.max(...pts()) ? 3 : 1; F.pts += v; O.pts -= v; events.push(`${nm(F)} は主席で ${nm(O)} から${v}Pもらった`); }
   else if (card === "使い魔") { F.pts += 2; O.pts += 2; events.push(`使い魔：${nm(F)} と ${nm(O)} が +2ずつ`); }
   else if (card === "禁術") { st.pendingKinjutsu.push(ownerIdx); events.push(`禁術がめくれた（最後に発動）`); return; }
   else if (card === "天秤") { F.pts += 2; O.pts -= 2; events.push(`${nm(F)} は天秤で ${nm(O)} から2Pもらった`); }
@@ -278,22 +284,23 @@ function settleTurn(st, events) {
 
 function endTurnBookkeeping(st) {
   for (const p of st.players) {
+    const didPlace = !!p.placed;
     if (p.placed && st.flippedOwners.has(p.idx)) p.flippedPile.push(p.placed);
     p.placed = null;
-    if (st.turn < 11 && p.stock.length) p.hand.push(p.stock.pop());
+    if (didPlace && p.stock.length) p.hand.push(p.stock.pop());
   }
   st.prevFlipper = st.flipper;
   st.flippedOwners = new Set();
   st.gained = false;
   st.flipCountThisTurn = 0;
   st.turn += 1;
-  if (st.turn >= 12) st.over = true;
+  if (st.players.every(p => p.placedCount >= st.deckSize)) st.over = true;
 }
 
 /* ===== ボットの思考 ===== */
 function remainingCounts(st, ownerIdx) {
   const cnt = {};
-  for (const c of DECK_LIST) cnt[c] = (cnt[c] || 0) + 1;
+  for (const c of st.deckList) cnt[c] = (cnt[c] || 0) + 1;
   for (const c of st.players[ownerIdx].flippedPile) cnt[c] -= 1;
   return cnt;
 }
@@ -312,7 +319,7 @@ function evOf(st, ownerIdx) {
     else if (card === "悪戯") v = -2;
     else if (card === "暴走") v = 0.5;
     else if (card === "祝福") v = me.pts === mx ? -(n - 1) : 1;
-    else if (card === "主席") v = me.pts === mx ? 3 : 1;
+    else if (card === "主席") v = st.players[ownerIdx].pts === mx ? 3 : 1;
     else if (card === "使い魔") v = 2;
     else if (card === "禁術") v = 1;
     else if (card === "天秤") v = 2;
@@ -328,11 +335,10 @@ function botChoosePlace(st, idx) {
     for (const name of order) { const i = hand.indexOf(name); if (i >= 0) return hand.splice(i, 1)[0]; }
     return hand.splice(Math.floor(st.rng() * hand.length), 1)[0];
   };
-  if (st.flipper === idx) return take(["魔石", "天秤", "使い魔", "主席", "暴走"]);
   return take(["天秤", "悪戯", "厄災", "使い魔", "加護", "祝福", "禁術", "暴走", "主席", "魔石"]);
 }
 function botDecideFlip(st) {
-  const facedown = st.players.filter(p => p.idx !== st.flipper && !st.flippedOwners.has(p.idx)).map(p => p.idx);
+  const facedown = st.players.filter(p => p.idx !== st.flipper && p.placed && !st.flippedOwners.has(p.idx)).map(p => p.idx);
   if (!facedown.length) return -1;
   let best = -1, bestEv = -Infinity;
   for (const o of facedown) { const e = evOf(st, o); if (e > bestEv) { bestEv = e; best = o; } }
@@ -376,7 +382,7 @@ function startGame() {
   $("screen-game").classList.remove("hidden");
   $("mode-label").textContent = "めくる人：" + MODE_LABEL[selMode];
   $("log").innerHTML = "";
-  addLog(`<span class="hd">試験開始。</span>全12ターン、最初の親は ${st.players[st.parent].name}。`);
+  addLog(`<span class="hd">試験開始。</span>最初の親は ${st.players[st.parent].name}。`);
   nextTurn();
 }
 function addLog(html) {
@@ -394,10 +400,10 @@ function renderScores() {
     const pile = p.flippedPile.length ? p.flippedPile.map(c => CARD_INFO[c].icon).join("") : "―";
     return `<div class="score ${p.idx === st.flipper ? "flipper" : ""} ${p.idx === 0 ? "me" : ""}">
       <div class="nm"><span><span class="dot" style="background:${p.color}"></span>${p.name}${p.idx === st.flipper ? "（めくる人）" : ""}</span>${rank}</div>
-      <div class="pt">${p.pts}<small> 点 ・ 手札${p.hand.length}枚</small></div>
+      <div class="pt">${p.pts}<small> 点 ・ 残り${p.hand.length + p.stock.length}枚</small></div>
       <div class="pile">めくられた：${pile}</div></div>`;
   }).join("");
-  $("turn-badge").textContent = `${Math.min(st.turn + 1, 12)} / 12 ターン`;
+  $("turn-badge").textContent = `${st.turn + 1} ターン目`;
 }
 
 function cardHTML(p, faceUp) {
@@ -412,7 +418,10 @@ function cardHTML(p, faceUp) {
 }
 function renderTable(tappable) {
   $("table").innerHTML = st.players.map(p => {
-    if (!p.placed) return `<div class="slot"></div>`;
+    if (!p.placed) {
+      if (p.idx === st.flipper) return `<div class="slot"><div class="card" style="border:1.5px dashed rgba(243,233,210,.35);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px">めくる人</div><div class="who"><span class="dot" style="background:${p.color}"></span>${p.name} は置かない</div></div>`;
+      return `<div class="slot"></div>`;
+    }
     const opened = st.flippedOwners.has(p.idx);
     const gone = st.turnPhase === "done" && !opened;
     return `<div class="slot"><div data-slot="${p.idx}">${cardHTML(p, opened)}</div>
@@ -451,18 +460,33 @@ async function nextTurn() {
   if (st.over) return showResult();
   busy = false;
   st.flipper = decideFlipper(st);
+  // ボットは先に伏せる（めくる人と、もう置き終わった人は伏せない）
+  for (const p of st.players) {
+    if (!p.isBot) continue;
+    if (p.idx !== st.flipper && p.placedCount < st.deckSize) { p.placed = botChoosePlace(st, p.idx); p.placedCount += 1; }
+  }
   renderScores();
-  setPhase(`${st.turn + 1}ターン目`, `めくる人：${st.players[st.flipper].name}。まず全員がカードを1枚伏せるよ`);
   renderTable(false);
-  renderHand(true);
-  setActions("");
-  // ボットは先に伏せる
-  for (const p of st.players) if (p.isBot) p.placed = botChoosePlace(st, p.idx);
+  const me = st.players[0];
+  const needPlace = me.idx !== st.flipper && me.placedCount < st.deckSize;
+  if (needPlace) {
+    setPhase(`${st.turn + 1}ターン目`, `めくる人：${st.players[st.flipper].name}。伏せるカードを1枚選んでね`);
+    renderHand(true);
+    setActions("");
+  } else {
+    setPhase(`${st.turn + 1}ターン目`, st.flipper === 0 ? "あなたはめくる人。カードは置かないよ" : `${st.players[st.flipper].name} がめくる人（カードは置かない）`);
+    renderHand(false);
+    setActions("");
+    busy = true;
+    await sleep(600);
+    flipPhase();
+  }
 }
 async function humanPlace(handIdx) {
   if (busy) return; busy = true;
   const me = st.players[0];
   me.placed = me.hand.splice(handIdx, 1)[0];
+  me.placedCount += 1;
   renderHand(false);
   renderTable(false);
   addLog(`全員がカードを伏せた。`);
@@ -488,8 +512,8 @@ async function flipPhase() {
       if (target < 0) break;
       await doFlip(target);
       await sleep(620);
-      if (!st.players[target] || st.lastCard === "暴走") break;
-      if (st.flippedOwners.size >= st.n - 1) break;
+      if (st.lastCard === "暴走") break;
+      if (!st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) break;
     }
     finishFlipping();
   }
@@ -510,7 +534,7 @@ async function doFlip(ownerIdx) {
 async function humanFlip(ownerIdx) {
   if (busy) return; busy = true;
   await doFlip(ownerIdx);
-  if (st.lastCard === "暴走" || st.flippedOwners.size >= st.n - 1) { await sleep(500); return finishFlipping(); }
+  if (st.lastCard === "暴走" || !st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) { await sleep(500); return finishFlipping(); }
   renderTable(true);
   setActions(`<button class="act-btn" id="btn-stop">やめる（${st.flipCountThisTurn}枚めくった）</button>`);
   $("btn-stop").addEventListener("click", () => finishFlipping());
