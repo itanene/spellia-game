@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PeerJS 接続診断</title>
+<style>
+  body { font-family: sans-serif; background:#0b2530; color:#f3e9d2; padding:16px; }
+  button { font-size:16px; padding:10px 16px; margin:4px; }
+  input { font-size:16px; padding:8px; width:110px; text-transform:uppercase; }
+  #log { white-space:pre-wrap; background:rgba(255,255,255,.07); padding:10px; border-radius:8px; margin-top:12px; font-size:13px; line-height:1.5; }
+  .big { font-size:26px; letter-spacing:3px; font-weight:bold; }
+</style>
+</head>
+<body>
+<h2>PeerJS 接続診断</h2>
+<p>設定：
+  <label><input type="radio" name="cfg" value="plain" checked> TURNなし</label>
+  <label><input type="radio" name="cfg" value="turn"> TURNあり</label>
+</p>
+<p>
+  <button id="b-host">ホストになる</button>
+  <input id="code" placeholder="CODE">
+  <button id="b-guest">ゲストで接続</button>
+</p>
+<p>部屋コード：<span class="big" id="mycode">----</span>　状態：<span id="state">未接続</span></p>
+<div id="log"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const log = (m) => { $("log").textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; };
+const state = (m) => { $("state").textContent = m; };
+const PREFIX = "spellia-diag-";
+const CH = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function cfg() {
+  if (document.querySelector('input[name="cfg"]:checked').value === "turn") {
+    return { config: { iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+      { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+      { urls: "turns:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
+    ] } };
+  }
+  return {};
+}
+function wireConn(conn, role) {
+  conn.on("open", () => { log(`${role}: conn open`); state("接続OK"); if (role === "guest") { conn.send("ping from guest"); log("guest: ping送信"); } });
+  conn.on("data", d => { log(`${role}: data受信「${d}」`); if (role === "host") conn.send("pong from host"); });
+  conn.on("close", () => log(`${role}: conn close`));
+  conn.on("error", e => log(`${role}: conn error ${e.type || e}`));
+  conn.on("iceStateChanged", s => log(`${role}: ice ${s}`));
+}
+$("b-host").addEventListener("click", () => {
+  let code = "";
+  for (let i = 0; i < 4; i++) code += CH[Math.floor(Math.random() * CH.length)];
+  $("mycode").textContent = code;
+  log(`host: peer作成 ${PREFIX}${code} 設定=${document.querySelector('input[name="cfg"]:checked').value}`);
+  const peer = new Peer(PREFIX + code, cfg());
+  peer.on("open", id => { log(`host: peer open id=${id}`); state("部屋オープン・待機中"); });
+  peer.on("connection", conn => { log("host: connection イベント"); wireConn(conn, "host"); });
+  peer.on("error", e => log(`host: peer error ${e.type}`));
+  peer.on("disconnected", () => log("host: peer disconnected"));
+});
+$("b-guest").addEventListener("click", () => {
+  const code = ($("code").value || "").trim().toUpperCase();
+  if (code.length !== 4) { log("guest: コードは4文字"); return; }
+  log(`guest: peer作成（匿名） 設定=${document.querySelector('input[name="cfg"]:checked').value}`);
+  const peer = new Peer(cfg());
+  peer.on("open", id => {
+    log(`guest: peer open id=${id}`);
+    state("部屋に接続中…");
+    const conn = peer.connect(PREFIX + code, { reliable: true });
+    log(`guest: connect() 発行 → ${PREFIX}${code}`);
+    wireConn(conn, "guest");
+  });
+  peer.on("error", e => log(`guest: peer error ${e.type}`));
+  peer.on("disconnected", () => log("guest: peer disconnected"));
+});
+log("ページ読み込み完了。PeerJS: " + (typeof Peer !== "undefined" ? "OK" : "読み込めていない"));
+</script>
+</body>
+</html>
