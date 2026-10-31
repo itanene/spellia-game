@@ -116,12 +116,6 @@
         <button class="opt" data-v="5">5人</button>
         <button class="opt" data-v="6">6人</button>
       </div>
-      <h3>めくる人の決め方</h3>
-      <div class="opt-row" id="opt-mode">
-        <button class="opt sel" data-v="rotate">時計回り</button>
-        <button class="opt" data-v="shuffle">シャッフル周回</button>
-        <button class="opt" data-v="random">ランダム</button>
-      </div>
       <button class="start-btn" id="btn-start">試験開始</button>
       <details>
         <summary>ルールとカード効果を見る</summary>
@@ -378,12 +372,12 @@ function botDecideFlip(st) {
    ========================================================= */
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-let st = null, selCount = 4, selMode = "rotate", busy = false;
+let st = null, selCount = 4, busy = false;
 
 $("rule-list").innerHTML = Object.entries(CARD_INFO)
   .map(([name, i]) => `<b>${i.icon}${name}</b>（${i.n}枚）：${i.text}`).join("<br>");
 
-for (const [boxId, set] of [["opt-count", v => selCount = +v], ["opt-mode", v => selMode = v]]) {
+for (const [boxId, set] of [["opt-count", v => selCount = +v]]) {
   $(boxId).addEventListener("click", e => {
     const b = e.target.closest(".opt"); if (!b) return;
     [...$(boxId).children].forEach(x => x.classList.remove("sel"));
@@ -401,11 +395,11 @@ function showTitle() {
   $("screen-result").classList.add("hidden");
 }
 function startGame() {
-  st = newGame(selCount, selMode, Math.random);
+  st = newGame(selCount, "rotate", Math.random);
   $("screen-title").classList.add("hidden");
   $("screen-result").classList.add("hidden");
   $("screen-game").classList.remove("hidden");
-  $("mode-label").textContent = "めくる人：" + MODE_LABEL[selMode];
+  $("mode-label").textContent = "めくる人：時計回り";
   $("log").innerHTML = "";
   addLog(`<span class="hd">試験開始。</span>最初の親は ${st.players[st.parent].name}。`);
   nextTurn();
