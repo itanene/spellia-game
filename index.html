@@ -191,6 +191,11 @@ function deckFor(n) {
 }
 
 const PLAYER_COLORS = ["#0f766e", "#7c3aed", "#dc2626", "#2563eb", "#d97706", "#db2777"];
+const BOT_STYLES = [
+  {name:"慎重", nerve:0.2, cap:2},
+  {name:"普通", nerve:0.5, cap:3},
+  {name:"大胆", nerve:0.85, cap:99},
+];
 const BOT_NAMES = ["ルナ", "シエル", "ノア", "ミオ", "レン"];
 const MODE_LABEL = {rotate:"時計回り", shuffle:"シャッフル周回", random:"ランダム"};
 
@@ -209,6 +214,7 @@ function newGame(n, mode, rng) {
       idx: i, name: i === 0 ? "あなた" : BOT_NAMES[i - 1], color: PLAYER_COLORS[i],
       isBot: i !== 0, pts: 3, hand: deck.slice(0, 5), stock: deck.slice(5),
       placed: null, flippedPile: [], placedCount: 0,
+      style: i === 0 ? null : BOT_STYLES[Math.floor(rng() * BOT_STYLES.length)],
     });
   }
   return {
@@ -340,10 +346,29 @@ function botChoosePlace(st, idx) {
 function botDecideFlip(st) {
   const facedown = st.players.filter(p => p.idx !== st.flipper && p.placed && !st.flippedOwners.has(p.idx)).map(p => p.idx);
   if (!facedown.length) return -1;
-  let best = -1, bestEv = -Infinity;
-  for (const o of facedown) { const e = evOf(st, o); if (e > bestEv) { bestEv = e; best = o; } }
-  const jitter = (st.players[st.flipper].idx % 3 - 1) * 0.1;
-  return bestEv > -0.35 + jitter ? best : -1;
+  const F = st.players[st.flipper];
+  const style = F.style || BOT_STYLES[1];
+  const ptsAll = st.players.map(p => p.pts);
+  const mx = Math.max(...ptsAll), mn = Math.min(...ptsAll);
+  const isLeader = F.pts === mx, isLast = F.pts === mn;
+  const gap = mx - F.pts;
+  // 止め時の基準：大胆なほど・負けているほど低く（よくめくる）、リードしているほど高い
+  let threshold = 0.9 - style.nerve * 1.6;
+  if (isLast || gap >= 4) threshold -= 0.7;
+  if (isLeader) threshold += 0.5;
+  const gained = F.pts - (st.flipStartPts != null ? st.flipStartPts : F.pts);
+  if (gained >= 3) threshold += 0.4;
+  if (gained < 0 && style.nerve > 0.6) threshold -= 0.3;
+  let cap = style.cap;
+  if (isLast || gap >= 4) cap += 2;
+  if (isLeader && style.nerve < 0.6) cap = Math.min(cap, 1);
+  if (st.flipCountThisTurn >= cap) return -1;
+  const evs = facedown.map(o => [o, evOf(st, o)]);
+  evs.sort((a, b) => b[1] - a[1]);
+  const best = evs[0];
+  if (st.flipCountThisTurn > 0 && best[1] <= threshold + (st.rng() * 0.5 - 0.25)) return -1;
+  if (st.rng() < 0.18 && evs.length > 1) return evs[1 + Math.floor(st.rng() * (evs.length - 1))][0];
+  return best[0];
 }
 </script>
 <script>
@@ -399,7 +424,7 @@ function renderScores() {
     const rank = p.pts === mx ? `<span class="rank">1位</span>` : p.pts === mn ? `<span class="rank">最下位</span>` : "";
     const pile = p.flippedPile.length ? p.flippedPile.map(c => CARD_INFO[c].icon).join("") : "―";
     return `<div class="score ${p.idx === st.flipper ? "flipper" : ""} ${p.idx === 0 ? "me" : ""}">
-      <div class="nm"><span><span class="dot" style="background:${p.color}"></span>${p.name}${p.idx === st.flipper ? "（めくる人）" : ""}</span>${rank}</div>
+      <div class="nm"><span><span class="dot" style="background:${p.color}"></span>${p.name}${p.isBot && p.style ? `<span style="color:var(--dim);font-size:10px"> ${p.style.name}</span>` : ""}${p.idx === st.flipper ? "（めくる人）" : ""}</span>${rank}</div>
       <div class="pt">${p.pts}<small> 点 ・ 残り${p.hand.length + p.stock.length}枚</small></div>
       <div class="pile">めくられた：${pile}</div></div>`;
   }).join("");
@@ -495,6 +520,7 @@ async function humanPlace(handIdx) {
 }
 async function flipPhase() {
   const F = st.players[st.flipper];
+  st.flipStartPts = F.pts;
   renderScores();
   if (!F.isBot) {
     setPhase(`${F.name} のめくり番`, "他の人のカードをタップしてめくろう。好きな所で「やめる」を押してね（暴走を引くと自動で終了）");
