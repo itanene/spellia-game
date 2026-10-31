@@ -119,8 +119,22 @@
       <button class="start-btn" id="btn-start">試験開始</button>
       <details>
         <summary>ルールとカード効果を見る</summary>
+<div class="tiny" style="text-align:left;line-height:1.8">
+<b>目的</b>：カードをめくってポイントを競う、魔法学校の実技試験です。最後に一番ポイントが多い人の勝ち。<br>
+<b>準備</b>：全員が同じカードのセットを持ちます（基本12枚、6人の時だけ10枚）。手札は5枚で、置くたびに山札から1枚補充します。開始は全員0ポイント、ポイントはマイナスにもなります。<br>
+<b>ターンの流れ</b><br>
+1. めくる人は時計回りに交代します。めくる人はカードを置きません<br>
+2. 他の全員が、手札から1枚を裏向きに置きます<br>
+3. めくる人は、他の人のカードを1枚ずつめくっていきます。最低1枚は必ずめくり、それ以降は好きな所で止められます<br>
+4. カードがめくれるたびに、その効果が起きます<br>
+5. 「暴走」を引いたら、そのターンのめくりはそこで終わりです<br>
+6. 「禁術」は最後にまとめて発動します<br>
+7. めくられなかった「天秤」は、持ち主が全員から1Pずつもらいます<br>
+8. 全員がカードを全部置き終わったら試験終了です（3人18ターン・4人16ターン・5人15ターン・6人12ターン）<br>
+<b>ネット対戦の注意</b>：部屋を作った人（ホスト）がページを閉じると対戦は終わります。あいている席にはボットが入り、途中で接続が切れた人の席もボットが引き継ぎます。
+</div>
+        <p class="tiny" style="text-align:left;margin-top:10px"><b>カード効果</b></p>
         <div class="rule-list" id="rule-list"></div>
-        <p class="tiny">全員同じデッキ（基本12枚、6人の時は10枚）。毎ターン、めくる人以外が1枚ずつ伏せて、めくる人が最低1枚・好きなだけめくって好きな所で止める（チキンレース方式）。全員がカードを置き終わったら終わり、一番ポイントが多い人の勝ち。開始は全員0ポイントで、ポイントはマイナスにもなる。</p>
       </details>
     </div>
     <div class="panel">
@@ -153,6 +167,25 @@
         <button class="act-btn hidden" id="btn-netstart">このメンバーで対戦開始</button>
         <button class="act-btn ghost" id="btn-leave">やめる</button>
       </div>
+      <details>
+        <summary>ルールとカード効果を見る</summary>
+<div class="tiny" style="text-align:left;line-height:1.8">
+<b>目的</b>：カードをめくってポイントを競う、魔法学校の実技試験です。最後に一番ポイントが多い人の勝ち。<br>
+<b>準備</b>：全員が同じカードのセットを持ちます（基本12枚、6人の時だけ10枚）。手札は5枚で、置くたびに山札から1枚補充します。開始は全員0ポイント、ポイントはマイナスにもなります。<br>
+<b>ターンの流れ</b><br>
+1. めくる人は時計回りに交代します。めくる人はカードを置きません<br>
+2. 他の全員が、手札から1枚を裏向きに置きます<br>
+3. めくる人は、他の人のカードを1枚ずつめくっていきます。最低1枚は必ずめくり、それ以降は好きな所で止められます<br>
+4. カードがめくれるたびに、その効果が起きます<br>
+5. 「暴走」を引いたら、そのターンのめくりはそこで終わりです<br>
+6. 「禁術」は最後にまとめて発動します<br>
+7. めくられなかった「天秤」は、持ち主が全員から1Pずつもらいます<br>
+8. 全員がカードを全部置き終わったら試験終了です（3人18ターン・4人16ターン・5人15ターン・6人12ターン）<br>
+<b>ネット対戦の注意</b>：部屋を作った人（ホスト）がページを閉じると対戦は終わります。あいている席にはボットが入り、途中で接続が切れた人の席もボットが引き継ぎます。
+</div>
+        <p class="tiny" style="text-align:left;margin-top:10px"><b>カード効果</b></p>
+        <div class="rule-list" id="rule-list-2"></div>
+      </details>
       <p class="tiny">ホストがページを閉じると対戦は終わります。</p>
     </div>
   </section>
@@ -406,8 +439,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let st = null, selCount = 4, busy = false;
 let MYIDX = 0, ONLINE = false;
 
-$("rule-list").innerHTML = Object.entries(CARD_INFO)
+const RULE_HTML = Object.entries(CARD_INFO)
   .map(([name, i]) => `<b>${i.icon}${name}</b>（${i.n}枚）：${i.text}`).join("<br>");
+$("rule-list").innerHTML = RULE_HTML;
+$("rule-list-2").innerHTML = RULE_HTML;
 
 for (const [boxId, set] of [["opt-count", v => selCount = +v]]) {
   $(boxId).addEventListener("click", e => {
