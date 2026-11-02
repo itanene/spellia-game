@@ -84,6 +84,8 @@
   .confirm-text{font-size:12.5px; color:var(--dim); margin:0; line-height:1.6}
   .confirm-btns{display:flex; gap:10px; justify-content:center; margin-top:16px}
   .rule-item{cursor:pointer}
+  .intro-box{background:rgba(8,30,37,.96); border:1px solid rgba(217,180,92,.6); border-radius:16px;
+    padding:24px 20px 20px; box-shadow:0 14px 44px rgba(0,0,0,.55)}
   .card.pending{box-shadow:0 0 18px 3px rgba(150,80,220,.75)}
   .card.tappable{cursor:pointer; animation:pulse 1.2s infinite}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,.0)}50%{box-shadow:0 0 14px 2px rgba(212,175,55,.55)}}
@@ -286,7 +288,7 @@
 
   <!-- 起動時の簡単な説明 -->
   <div id="intro-overlay" class="confirm-bg" style="z-index:95">
-    <div class="confirm-box" style="max-width:440px; margin:0 auto; text-align:left; position:relative">
+    <div class="confirm-box intro-box" style="max-width:440px; margin:0 auto; text-align:left; position:relative">
       <button id="btn-intro-close" aria-label="閉じる" style="position:absolute; top:0; right:4px; background:none; border:none; color:var(--cream); font-size:27px; cursor:pointer; line-height:1; padding:4px 8px">✕</button>
       <p style="text-align:center; font-size:21px; color:var(--cream); letter-spacing:.12em; margin:2px 0 10px">✦ SPELLIAの遊び方 ✦</p>
       <div class="tiny" style="line-height:1.95; font-size:13.5px">
