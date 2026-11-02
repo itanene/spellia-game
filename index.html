@@ -180,7 +180,7 @@
         <input id="net-name" type="text" maxlength="10" placeholder="プレイヤー" style="background:rgba(255,255,255,.06);color:#f3e9d2;border:1px solid rgba(243,233,210,.35);border-radius:8px;padding:8px 10px;font-size:15px;width:150px">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <button class="act-btn" id="btn-host">部屋を作る（人数は上の設定）</button>
+        <button class="act-btn" id="btn-host">部屋を作る</button>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <input id="net-code" type="text" maxlength="4" placeholder="部屋コード" style="background:rgba(255,255,255,.06);color:#f3e9d2;border:1px solid rgba(243,233,210,.35);border-radius:8px;padding:8px 10px;font-size:15px;width:120px;text-transform:uppercase">
@@ -199,6 +199,15 @@
       <p>部屋コード：<b id="lobby-code" style="font-size:28px;letter-spacing:3px"></b></p>
       <p class="tiny" id="lobby-status"></p>
       <div id="lobby-members"></div>
+      <div id="lobby-size-row" class="hidden" style="margin-top:14px">
+        <p class="tiny" style="margin:0 0 6px">人数（ホストだけが変えられます。集まった人数より少なくはできません）</p>
+        <div class="opt-row" id="lobby-size">
+          <button class="opt" data-v="3">3人</button>
+          <button class="opt" data-v="4">4人</button>
+          <button class="opt" data-v="5">5人</button>
+          <button class="opt" data-v="6">6人</button>
+        </div>
+      </div>
       <div class="actions" style="margin-top:18px">
         <button class="act-btn hidden" id="btn-netstart">このメンバーで対戦開始</button>
         <button class="act-btn ghost" id="btn-leave">やめる</button>
@@ -274,6 +283,25 @@
       <button class="act-btn ghost" id="btn-totitle">タイトルに戻る</button>
     </div>
   </section>
+
+  <!-- 起動時の簡単な説明 -->
+  <div id="intro-overlay" class="confirm-bg" style="z-index:95">
+    <div class="confirm-box" style="max-width:440px; margin:0 auto; text-align:left; position:relative">
+      <button id="btn-intro-close" aria-label="閉じる" style="position:absolute; top:0; right:4px; background:none; border:none; color:var(--cream); font-size:27px; cursor:pointer; line-height:1; padding:4px 8px">✕</button>
+      <p style="text-align:center; font-size:21px; color:var(--cream); letter-spacing:.12em; margin:2px 0 10px">✦ SPELLIAの遊び方 ✦</p>
+      <div class="tiny" style="line-height:1.95; font-size:13.5px">
+        みんなでカードを「裏向きに置く人」と「めくる人」に分かれて遊ぶ、点数取りゲームです。<br>
+        <b style="color:var(--cream)">1ターンの流れ</b><br>
+        1. めくる人以外は、カードを1枚、裏向きに置きます<br>
+        2. めくる人は、そのカードを1枚ずつめくっていきます（最初の1枚は必ずめくります）<br>
+        3. 良いカードなら点数が増え、悪いカードなら減ります。「もう1枚いく？　やめる？」は自由です<br>
+        4. 次の人がめくる人になって、同じことを繰り返します<br>
+        <b style="color:var(--cream)">勝ち方</b>：全員のカードがなくなった時に、一番ポイントが多い人の勝ちです。<br>
+        くわしいルールとカード効果は、タイトル画面の「ルールとカード効果を見る」から読めます。
+      </div>
+      <div class="confirm-btns"><button class="act-btn" id="btn-intro-ok">とじる</button></div>
+    </div>
+  </div>
 
   <!-- カード拡大（見るだけ） -->
   <div id="card-view" class="confirm-bg hidden">
@@ -646,6 +674,8 @@ function askCardConfirm(name, cb){
   $("card-confirm").classList.remove("hidden");
 }
 function closeCardConfirm(){ confirmCb = null; $("card-confirm").classList.add("hidden"); }
+$("btn-intro-close").addEventListener("click", () => $("intro-overlay").classList.add("hidden"));
+$("btn-intro-ok").addEventListener("click", () => $("intro-overlay").classList.add("hidden"));
 $("btn-confirm-yes").addEventListener("click", () => { const cb = confirmCb; closeCardConfirm(); if (cb) cb(); });
 $("btn-confirm-no").addEventListener("click", closeCardConfirm);
 $("card-confirm").addEventListener("click", e => { if (e.target === $("card-confirm")) closeCardConfirm(); });
@@ -818,9 +848,16 @@ function showLobby() {
   $("screen-lobby").classList.remove("hidden");
   $("lobby-code").textContent = roomCode;
   $("btn-netstart").classList.toggle("hidden", !isHost);
+  $("lobby-size-row").classList.toggle("hidden", !isHost);
   renderLobby();
 }
 function renderLobby() {
+  for (const b of $("lobby-size").children){
+    const v = +b.dataset.v;
+    b.classList.toggle("sel", v === roomSize);
+    b.disabled = v < members.length;
+    b.style.opacity = v < members.length ? ".35" : "";
+  }
   $("lobby-members").innerHTML = members.slice().sort((a, b) => a.seat - b.seat).map(m =>
     `<div class="result-row"><span>${m.seat + 1}番席　${m.name}${m.seat === 0 ? "（ホスト）" : ""}${m.seat === mySeat ? "（あなた）" : ""}</span></div>`).join("")
     + `<p class="tiny">${members.length} / ${roomSize} 人が集まっています。あいている席にはボットが入ります。</p>`;
@@ -931,6 +968,13 @@ function guestOnData(d) {
 
 /* ===== ホスト：対戦開始と進行 ===== */
 $("btn-netstart").addEventListener("click", () => { if (isHost && !gameStarted) netStartGame(); });
+$("lobby-size").addEventListener("click", e => {
+  const b = e.target.closest(".opt"); if (!b || !isHost || gameStarted) return;
+  const v = +b.dataset.v;
+  if (v < members.length || v === roomSize) return;
+  roomSize = v;
+  broadcastLobby();
+});
 
 function netStartGame() {
   ONLINE = true; gameStarted = true; inLobby = false; MYIDX = 0; mySeat = 0;
