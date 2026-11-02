@@ -70,6 +70,12 @@
   .card .icon{font-size:30px; line-height:1}
   .card .cname{font-size:21px; color:var(--cream); letter-spacing:.15em; margin:2px 0}
   .card .ctext{font-size:9.5px; color:var(--dim); line-height:1.5}
+  .card .face{padding:0; overflow:hidden}
+  .card .face img.art{width:100%; height:100%; object-fit:cover; display:block}
+  .card .front{border:none; background:#0a2830}
+  .card .back{border:none}
+  .pile-img{width:15px; height:21px; object-fit:cover; border-radius:2px; vertical-align:-4px; margin-right:2px}
+  .rule-img{width:21px; height:30px; object-fit:cover; border-radius:3px; vertical-align:-9px; margin-right:5px}
   .card.pending{box-shadow:0 0 18px 3px rgba(150,80,220,.75)}
   .card.tappable{cursor:pointer; animation:pulse 1.2s infinite}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,.0)}50%{box-shadow:0 0 14px 2px rgba(212,175,55,.55)}}
@@ -225,16 +231,16 @@
    SPELLIA ブラウザ版 — ゲームロジック（UIと分離してテスト可能に）
    ========================================================= */
 const CARD_INFO = {
-  "魔石":  {icon:"🔷", text:"めくった人 +3", n:2},
-  "悪戯":  {icon:"🦊", text:"めくった人は持ち主に2P渡す", n:2},
-  "暴走":  {icon:"🐎", text:"めくった人 +1して、そのターンのめくり終了", n:1},
-  "祝福":  {icon:"🕊️", text:"1位は全員に1P渡す", n:1},
-  "主席":  {icon:"🦅", text:"めくった人は持ち主からもらう。持ち主が今1位なら3P、ちがうなら1P", n:1},
-  "使い魔":{icon:"🐈‍⬛", text:"めくった人と持ち主 +2ずつ", n:1},
-  "禁術":  {icon:"🐉", text:"最後に発動。そのターンまだポイントが増えてなければ+4、増えてたら-1", n:1},
-  "天秤":  {icon:"⚖️", text:"めくられたら持ち主から2Pもらう。めくられなかったら持ち主が全員から1Pずつもらう（自分のめくり番では発動しない）", n:1},
-  "加護":  {icon:"🦌", text:"最下位 +2（同率なら全員+1）", n:1},
-  "厄災":  {icon:"🐦‍⬛", text:"めくった人は全員に1P渡す", n:1},
+  "魔石":  {key:"maseki", icon:"🔷", text:"めくった人 +3", n:2},
+  "悪戯":  {key:"akugi", icon:"🦊", text:"めくった人は持ち主に2P渡す", n:2},
+  "暴走":  {key:"bousou", icon:"🐎", text:"めくった人 +1して、そのターンのめくり終了", n:1},
+  "祝福":  {key:"shukufuku", icon:"🕊️", text:"1位は全員に1P渡す", n:1},
+  "主席":  {key:"shuseki", icon:"🦅", text:"めくった人は持ち主からもらう。持ち主が今1位なら3P、ちがうなら1P", n:1},
+  "使い魔":{key:"tsukaima", icon:"🐈‍⬛", text:"めくった人と持ち主 +2ずつ", n:1},
+  "禁術":  {key:"kinjutsu", icon:"🐉", text:"最後に発動。そのターンまだポイントが増えてなければ+4、増えてたら-1", n:1},
+  "天秤":  {key:"tenbin", icon:"⚖️", text:"めくられたら持ち主から2Pもらう。めくられなかったら持ち主が全員から1Pずつもらう（自分のめくり番では発動しない）", n:1},
+  "加護":  {key:"kago", icon:"🦌", text:"最下位 +2（同率なら全員+1）", n:1},
+  "厄災":  {key:"yakusai", icon:"🐦‍⬛", text:"めくった人は全員に1P渡す", n:1},
 };
 const DECK_LIST = [];
 for (const [name, info] of Object.entries(CARD_INFO)) for (let i = 0; i < info.n; i++) DECK_LIST.push(name);
@@ -248,7 +254,7 @@ function deckFor(n) {
   return list;
 }
 
-const PLAYER_COLORS = ["#0f766e", "#7c3aed", "#dc2626", "#2563eb", "#d97706", "#db2777"];
+const PLAYER_COLORS = ["#7f4b47", "#586760", "#cbb3bf", "#dcd6d2", "#8584b0", "#82a8d9"];
 const BOT_STYLES = [
   {name:"慎重", nerve:0.2, cap:2},
   {name:"普通", nerve:0.5, cap:3},
@@ -440,7 +446,7 @@ let st = null, selCount = 4, busy = false;
 let MYIDX = 0, ONLINE = false;
 
 const RULE_HTML = Object.entries(CARD_INFO)
-  .map(([name, i]) => `<b>${i.icon}${name}</b>（${i.n}枚）：${i.text}`).join("<br>");
+  .map(([name, i]) => `<b><img class="rule-img" src="cards/${i.key}.webp" alt="">${name}</b>（${i.n}枚）：${i.text}`).join("<br>");
 $("rule-list").innerHTML = RULE_HTML;
 $("rule-list-2").innerHTML = RULE_HTML;
 
@@ -484,7 +490,7 @@ function renderScores() {
   const mx = Math.max(...ptsAll), mn = Math.min(...ptsAll);
   $("scoreboard").innerHTML = st.players.map(p => {
     const rank = p.pts === mx ? `<span class="rank">1位</span>` : p.pts === mn ? `<span class="rank">最下位</span>` : "";
-    const pile = p.flippedPile.length ? p.flippedPile.map(c => CARD_INFO[c].icon).join("") : "―";
+    const pile = p.flippedPile.length ? p.flippedPile.map(c => `<img class="pile-img" src="cards/${CARD_INFO[c].key}.webp" alt="${c}">`).join("") : "―";
     return `<div class="score ${p.idx === st.flipper ? "flipper" : ""} ${p.idx === MYIDX ? "me" : ""}">
       <div class="nm"><span><span class="dot" style="background:${p.color}"></span>${p.name}${p.isBot && p.style ? `<span style="color:var(--dim);font-size:10px"> ${p.style.name}</span>` : ""}${p.idx === st.flipper ? "（めくる人）" : ""}</span>${rank}</div>
       <div class="pt">${p.pts}<small> 点 ・ 残り${p.hand.length + p.stock.length}枚</small></div>
@@ -496,12 +502,9 @@ function renderScores() {
 function cardHTML(p, faceUp) {
   const info = CARD_INFO[p.placed];
   return `<div class="card ${faceUp ? "open" : ""}" data-owner="${p.idx}">
-    <div class="face back" style="background-color:${p.color}">
-      <div class="bstar">✦</div><div class="blogo">SPELLIA</div><div class="bstar">✦</div>
-    </div>
-    <div class="face front">
-      <div class="icon">${info.icon}</div><div class="cname">${p.placed}</div><div class="ctext">${info.text}</div>
-    </div></div>`;
+    <div class="face back"><img class="art" src="cards/back${p.idx % 6}.webp" alt=""></div>
+    <div class="face front"><img class="art" src="cards/${info.key}.webp" alt="${p.placed}"></div>
+    </div>`;
 }
 function renderTable(tappable) {
   $("table").innerHTML = st.players.map(p => {
@@ -532,9 +535,7 @@ function renderHand(onPick) {
   $("hand-label").textContent = onPick ? `あなたの手札（山札 残り${me.stock.length}枚）— 伏せるカードを1枚選んでね` : "";
   $("hand").innerHTML = onPick ? me.hand.map((c, i) => {
     const info = CARD_INFO[c];
-    return `<div class="card" data-hand="${i}"><div class="face front" style="position:relative">
-      <div class="icon">${info.icon}</div><div class="cname">${c}</div><div class="ctext">${info.text}</div>
-    </div></div>`;
+    return `<div class="card" data-hand="${i}"><div class="face front" style="position:relative"><img class="art" src="cards/${info.key}.webp" alt="${c}"></div></div>`;
   }).join("") : "";
   if (onPick) document.querySelectorAll("[data-hand]").forEach(el =>
     el.addEventListener("click", () => humanPlace(+el.dataset.hand)));
@@ -955,9 +956,7 @@ function netRenderHandPicker(cb) {
   $("hand-label").textContent = `あなたの手札（山札 残り${me.stock.length}枚）— 伏せるカードを1枚選んでね`;
   $("hand").innerHTML = me.hand.map((c, i) => {
     const info = CARD_INFO[c];
-    return `<div class="card" data-hand="${i}"><div class="face front" style="position:relative">
-      <div class="icon">${info.icon}</div><div class="cname">${c}</div><div class="ctext">${info.text}</div>
-    </div></div>`;
+    return `<div class="card" data-hand="${i}"><div class="face front" style="position:relative"><img class="art" src="cards/${info.key}.webp" alt="${c}"></div></div>`;
   }).join("");
   document.querySelectorAll("[data-hand]").forEach(el =>
     el.addEventListener("click", () => cb(me.hand[+el.dataset.hand])));
