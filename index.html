@@ -653,6 +653,12 @@ function renderTable(tappable) {
     const el = document.querySelector(`[data-slot="${o}"] .card`);
     if (el) el.classList.add("pending");
   }
+  // めくったカード（表向き）はタップで大きく見られる
+  for (const p of st.players) {
+    if (!p.placed || !st.flippedOwners.has(p.idx)) continue;
+    const el = document.querySelector(`[data-slot="${p.idx}"] .card`);
+    if (el) { el.style.cursor = "pointer"; el.addEventListener("click", () => showCardBig(p.placed)); }
+  }
 }
 function renderHand(onPick) {
   const me = st.players[MYIDX];
