@@ -76,6 +76,13 @@
   .card .back{border:none}
   .pile-img{width:15px; height:21px; object-fit:cover; border-radius:2px; vertical-align:-4px; margin-right:2px}
   .rule-img{width:21px; height:30px; object-fit:cover; border-radius:3px; vertical-align:-9px; margin-right:5px}
+  .confirm-bg{position:fixed; inset:0; background:rgba(4,16,20,.85); z-index:80; display:flex; align-items:center; justify-content:center}
+  .confirm-box{text-align:center; padding:18px; width:100%}
+  .confirm-q{font-size:20px; color:var(--cream); letter-spacing:.1em; margin:0 0 12px}
+  .confirm-box img{max-width:min(78vw,290px); max-height:58vh; border-radius:12px; box-shadow:0 10px 36px rgba(0,0,0,.6)}
+  .confirm-name{font-size:19px; color:var(--cream); margin:12px 0 2px; letter-spacing:.12em}
+  .confirm-text{font-size:12.5px; color:var(--dim); margin:0; line-height:1.6}
+  .confirm-btns{display:flex; gap:10px; justify-content:center; margin-top:16px}
   .card.pending{box-shadow:0 0 18px 3px rgba(150,80,220,.75)}
   .card.tappable{cursor:pointer; animation:pulse 1.2s infinite}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,.0)}50%{box-shadow:0 0 14px 2px rgba(212,175,55,.55)}}
@@ -222,6 +229,20 @@
       <button class="act-btn ghost" id="btn-totitle">タイトルに戻る</button>
     </div>
   </section>
+
+  <!-- 手札を伏せる前の確認 -->
+  <div id="card-confirm" class="confirm-bg hidden">
+    <div class="confirm-box">
+      <p class="confirm-q">これにしますか？</p>
+      <img id="confirm-img" alt="">
+      <p class="confirm-name" id="confirm-name"></p>
+      <p class="confirm-text" id="confirm-text"></p>
+      <div class="confirm-btns">
+        <button class="act-btn" id="btn-confirm-yes">これにする</button>
+        <button class="act-btn ghost" id="btn-confirm-no">やめる</button>
+      </div>
+    </div>
+  </div>
 
 </div>
 
@@ -538,8 +559,23 @@ function renderHand(onPick) {
     return `<div class="card" data-hand="${i}"><div class="face front" style="position:relative"><img class="art" src="cards/${info.key}.webp" alt="${c}"></div></div>`;
   }).join("") : "";
   if (onPick) document.querySelectorAll("[data-hand]").forEach(el =>
-    el.addEventListener("click", () => humanPlace(+el.dataset.hand)));
+    el.addEventListener("click", () => { const i = +el.dataset.hand; askCardConfirm(me.hand[i], () => humanPlace(i)); }));
 }
+
+/* 手札を伏せる前の確認（拡大＋ワンクッション） */
+let confirmCb = null;
+function askCardConfirm(name, cb){
+  const info = CARD_INFO[name];
+  $("confirm-img").src = "cards/" + info.key + ".webp";
+  $("confirm-name").textContent = name;
+  $("confirm-text").textContent = info.text;
+  confirmCb = cb;
+  $("card-confirm").classList.remove("hidden");
+}
+function closeCardConfirm(){ confirmCb = null; $("card-confirm").classList.add("hidden"); }
+$("btn-confirm-yes").addEventListener("click", () => { const cb = confirmCb; closeCardConfirm(); if (cb) cb(); });
+$("btn-confirm-no").addEventListener("click", closeCardConfirm);
+$("card-confirm").addEventListener("click", e => { if (e.target === $("card-confirm")) closeCardConfirm(); });
 function setPhase(msg, sub) { $("phase-msg").textContent = msg; $("phase-sub").textContent = sub || ""; }
 function setActions(html) { $("actions").innerHTML = html || ""; }
 
@@ -959,7 +995,7 @@ function netRenderHandPicker(cb) {
     return `<div class="card" data-hand="${i}"><div class="face front" style="position:relative"><img class="art" src="cards/${info.key}.webp" alt="${c}"></div></div>`;
   }).join("");
   document.querySelectorAll("[data-hand]").forEach(el =>
-    el.addEventListener("click", () => cb(me.hand[+el.dataset.hand])));
+    el.addEventListener("click", () => { const c = me.hand[+el.dataset.hand]; askCardConfirm(c, () => cb(c)); }));
 }
 function markTappable(cb) {
   for (const p of st.players) {
