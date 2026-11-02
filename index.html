@@ -415,28 +415,28 @@ function applyFlip(st, ownerIdx, events) {
   const before = F.pts;
   const pts = () => st.players.map(p => p.pts);
   const nm = p => p.name;
-  if (card === "魔石") { F.pts += 3; events.push(`${nm(F)} は魔石で +3`); }
-  else if (card === "悪戯") { F.pts -= 2; O.pts += 2; events.push(`${nm(F)} は悪戯！ ${nm(O)} に2P渡した`); }
+  if (card === "魔石") { F.pts += 3; events.push(`${nm(F)} が ${nm(O)} のカードをめくって +3ポイント`); }
+  else if (card === "悪戯") { F.pts -= 2; O.pts += 2; events.push(`${nm(F)} が ${nm(O)} のカードをめくって、${nm(O)} に2ポイント渡した`); }
   else if (card === "祝福") {
     const mx = Math.max(...pts());
     for (const g of st.players.filter(p => p.pts === mx))
       for (const q of st.players) if (q !== g) { g.pts -= 1; q.pts += 1; }
-    events.push(`祝福：1位が全員に1P渡した`);
+    events.push(`${nm(F)} が ${nm(O)} のカードをめくった：1位の人が他の全員に1ポイントずつ渡した`);
   }
-  else if (card === "主席") { const v = O.pts === Math.max(...pts()) ? 3 : 1; F.pts += v; O.pts -= v; events.push(`${nm(F)} は主席で ${nm(O)} から${v}Pもらった`); }
-  else if (card === "使い魔") { F.pts += 2; O.pts += 2; events.push(`使い魔：${nm(F)} と ${nm(O)} が +2ずつ`); }
-  else if (card === "禁術") { st.pendingKinjutsu.push(ownerIdx); events.push(`禁術がめくれた（最後に発動）`); return; }
-  else if (card === "天秤") { F.pts += 2; O.pts -= 2; events.push(`${nm(F)} は天秤で ${nm(O)} から2Pもらった`); }
+  else if (card === "主席") { const v = O.pts === Math.max(...pts()) ? 3 : 1; F.pts += v; O.pts -= v; events.push(`${nm(F)} が ${nm(O)} のカードをめくって、${nm(O)} から${v}ポイントもらった`); }
+  else if (card === "使い魔") { F.pts += 2; O.pts += 2; events.push(`${nm(F)} が ${nm(O)} のカードをめくった：2人が +2ポイントずつ`); }
+  else if (card === "禁術") { st.pendingKinjutsu.push(ownerIdx); events.push(`${nm(F)} が ${nm(O)} のカードをめくった（効果はターンの最後）`); return; }
+  else if (card === "天秤") { F.pts += 2; O.pts -= 2; events.push(`${nm(F)} が ${nm(O)} のカードをめくって、${nm(O)} から2ポイントもらった`); }
   else if (card === "加護") {
     const mn = Math.min(...pts()); const lasts = st.players.filter(p => p.pts === mn);
-    if (lasts.length === 1) { lasts[0].pts += 2; events.push(`加護：最下位の ${nm(lasts[0])} が +2`); }
-    else { for (const q of lasts) q.pts += 1; events.push(`加護：最下位の全員が +1`); }
+    if (lasts.length === 1) { lasts[0].pts += 2; events.push(`${nm(F)} が ${nm(O)} のカードをめくった：最下位の ${nm(lasts[0])} が +2ポイント`); }
+    else { for (const q of lasts) q.pts += 1; events.push(`${nm(F)} が ${nm(O)} のカードをめくった：最下位の全員が +1ポイント`); }
   }
   else if (card === "厄災") {
     for (const q of st.players) if (q !== F) { F.pts -= 1; q.pts += 1; }
-    events.push(`${nm(F)} は厄災！ 全員に1P渡した`);
+    events.push(`${nm(F)} が ${nm(O)} のカードをめくって、全員に1ポイントずつ渡した`);
   }
-  if (card === "暴走") { F.pts += 1; events.push(`${nm(F)} は暴走で +1（めくり終了）`); }
+  if (card === "暴走") { F.pts += 1; events.push(`${nm(F)} が ${nm(O)} のカードをめくって +1ポイント（めくり終了）`); }
   if (F.pts > before) st.gained = true;
   st.flippedOwners.add(ownerIdx);
 }
@@ -445,8 +445,8 @@ function applyFlip(st, ownerIdx, events) {
 function settleTurn(st, events) {
   const F = st.players[st.flipper];
   for (const _ of st.pendingKinjutsu) {
-    if (st.gained) { F.pts -= 1; events.push(`禁術：${F.name} はこのターンもう増えていたので -1`); }
-    else { F.pts += 4; events.push(`禁術：${F.name} はこのターン無得点だったので +4！`); }
+    if (st.gained) { F.pts -= 1; events.push(`最後の効果：${F.name} はこのターンもう点数が増えていたので −1ポイント`); }
+    else { F.pts += 4; events.push(`最後の効果：${F.name} はこのターン点数が増えていなかったので +4ポイント！`); }
   }
   st.pendingKinjutsu = [];
   for (let k = 0; k < st.n; k++) {
@@ -454,7 +454,7 @@ function settleTurn(st, events) {
     if (o === st.flipper || st.flippedOwners.has(o)) continue;
     if (st.players[o].placed === "天秤") {
       for (const q of st.players) if (q.idx !== o) { q.pts -= 1; st.players[o].pts += 1; }
-      events.push(`捲られなかった天秤が発動：${st.players[o].name} が全員から1Pずつもらった`);
+      events.push(`めくられなかったカードの効果：${st.players[o].name} が全員から1ポイントずつもらった`);
       st.flippedOwners.add(o); // UIで公開するために印を付ける
     }
   }
@@ -614,7 +614,7 @@ function renderScores() {
   const mx = Math.max(...ptsAll), mn = Math.min(...ptsAll);
   $("scoreboard").innerHTML = st.players.map(p => {
     const rank = p.pts === mx ? `<span class="rank">1位</span>` : p.pts === mn ? `<span class="rank">最下位</span>` : "";
-    const pile = p.flippedPile.length ? p.flippedPile.map(c => `<img class="pile-img" src="cards/${CARD_INFO[c].key}.webp" alt="${c}">`).join("") : "―";
+    const pile = p.flippedPile.length ? p.flippedPile.length + "枚" : "―";
     return `<div class="score ${p.idx === st.flipper ? "flipper" : ""} ${p.idx === MYIDX ? "me" : ""}">
       <div class="nm"><span><span class="dot" style="background:${p.color}"></span>${p.name}${p.isBot && p.style ? `<span style="color:var(--dim);font-size:10px"> ${p.style.name}</span>` : ""}${p.idx === st.flipper ? "（めくる人）" : ""}</span>${rank}</div>
       <div class="pt">${p.pts}<small> 点 ・ 残り${p.hand.length + p.stock.length}枚</small></div>
