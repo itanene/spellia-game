@@ -280,11 +280,22 @@
   <section id="screen-result" class="hidden">
     <p class="logo" style="font-size:36px">試験結果</p>
     <div id="result-list" style="margin-top:22px"></div>
+    <p class="tiny" style="margin-top:14px">人をタップすると、その人のターンごとの記録が見られます</p>
+    <div id="result-stats" style="max-width:520px; margin:14px auto 0; text-align:left"></div>
     <div class="actions" style="margin-top:26px">
       <button class="act-btn" id="btn-again">同じ設定でもう一度</button>
       <button class="act-btn ghost" id="btn-totitle">タイトルに戻る</button>
     </div>
   </section>
+
+  <!-- 試合結果：その人の記録 -->
+  <div id="result-detail" class="confirm-bg hidden" style="z-index:85">
+    <div class="confirm-box intro-box" style="max-width:440px; margin:0 auto; text-align:left; max-height:86vh; overflow-y:auto">
+      <button class="act-btn ghost" id="btn-detail-close" style="margin-bottom:10px">← もどる</button>
+      <p class="confirm-name" id="detail-title" style="margin-top:0"></p>
+      <div id="detail-list"></div>
+    </div>
+  </div>
 
   <!-- 起動時の簡単な説明 -->
   <div id="intro-overlay" class="confirm-bg" style="z-index:95">
@@ -394,6 +405,7 @@ function newGame(n, mode, rng) {
     deckSize: baseDeck.length, deckList: baseDeck,
     lapOrder: shuffled([...Array(n).keys()], rng), prevFlipper: -1,
     flipper: -1, flippedOwners: new Set(), pendingKinjutsu: [], gained: false,
+    history: [], turnFlips: [],
     flipCountThisTurn: 0, over: false,
   };
 }
@@ -412,6 +424,7 @@ function decideFlipper(st) {
 /* 効果を適用し、ログ行の配列を返す。禁術は pendingKinjutsu に積むだけ */
 function applyFlip(st, ownerIdx, events) {
   const F = st.players[st.flipper], O = st.players[ownerIdx], card = O.placed;
+  st.turnFlips.push({ owner: ownerIdx, card });
   const before = F.pts;
   const pts = () => st.players.map(p => p.pts);
   const nm = p => p.name;
@@ -461,6 +474,13 @@ function settleTurn(st, events) {
 }
 
 function endTurnBookkeeping(st) {
+  st.history.push({
+    turn: st.turn + 1, flipper: st.flipper,
+    placements: st.players.map(p => p.placed),
+    flips: st.turnFlips.slice(),
+    scores: st.players.map(p => p.pts),
+  });
+  st.turnFlips = [];
   for (const p of st.players) {
     const didPlace = !!p.placed;
     if (p.placed && st.flippedOwners.has(p.idx)) p.flippedPile.push(p.placed);
@@ -802,8 +822,62 @@ function showResult() {
   $("screen-result").classList.remove("hidden");
   const order = st.players.slice().sort((a, b) => b.pts - a.pts);
   $("result-list").innerHTML = order.map((p, i) =>
-    `<div class="result-row ${i === 0 ? "win" : ""}"><span>${i + 1}位　${p.name}${i === 0 ? " 👑" : ""}</span><span>${p.pts} 点</span></div>`).join("");
+    `<div class="result-row ${i === 0 ? "win" : ""}" data-player="${p.idx}" style="cursor:pointer"><span>${i + 1}位　${p.name}${i === 0 ? " 👑" : ""}</span><span>${p.pts} 点</span></div>`).join("");
+  for (const row of $("result-list").querySelectorAll("[data-player]"))
+    row.addEventListener("click", () => openResultDetail(+row.dataset.player));
+  renderResultStats();
 }
+function computeMatchStats(){
+  const byOwner = {}, byCard = {}, flippedCount = {};
+  for (const h of (st.history || [])) for (const f of h.flips){
+    (byOwner[h.flipper] = byOwner[h.flipper] || {});
+    byOwner[h.flipper][f.owner] = (byOwner[h.flipper][f.owner] || 0) + 1;
+    byCard[f.card] = (byCard[f.card] || 0) + 1;
+    flippedCount[f.owner] = (flippedCount[f.owner] || 0) + 1;
+  }
+  return { byOwner, byCard, flippedCount };
+}
+function renderResultStats(){
+  const el = $("result-stats");
+  if (!st.history || !st.history.length) { el.innerHTML = ""; return; }
+  const { byOwner, byCard, flippedCount } = computeMatchStats();
+  const nm = i => st.players[i].name;
+  let h = `<p style="color:var(--gold); letter-spacing:.08em; margin:0 0 8px">✦ 試合の記録 ✦</p>`;
+  for (const p of st.players){
+    const mine = byOwner[p.idx];
+    if (!mine) continue;
+    const parts = Object.keys(mine).sort((a, b) => mine[b] - mine[a]).map(o => `${nm(+o)} ×${mine[o]}`).join("、");
+    h += `<p class="tiny" style="margin:4px 0">${p.name} がめくったカード：${parts}</p>`;
+  }
+  const maxCard = Math.max(...Object.values(byCard));
+  const topCards = Object.keys(byCard).filter(c => byCard[c] === maxCard);
+  h += `<p class="tiny" style="margin:4px 0">一番めくられたカード：${topCards.join("、")}（${maxCard}回）</p>`;
+  const maxPerson = Math.max(...Object.values(flippedCount));
+  const topPeople = Object.keys(flippedCount).filter(i => flippedCount[i] === maxPerson).map(i => nm(+i));
+  h += `<p class="tiny" style="margin:4px 0">一番めくられた人：${topPeople.join("、")}（${maxPerson}回）</p>`;
+  el.innerHTML = h;
+}
+function openResultDetail(idx){
+  const P = st.players[idx];
+  $("detail-title").textContent = `${P.name} の記録（ターンごと）`;
+  let prev = 0;
+  $("detail-list").innerHTML = (st.history || []).map(h => {
+    const now = h.scores[idx];
+    const d = now - prev; prev = now;
+    const dStr = d > 0 ? `<span style="color:#7de08a">+${d}</span>` : d < 0 ? `<span style="color:#ff9d9a">${d}</span>` : `<span style="color:var(--dim)">±0</span>`;
+    let line;
+    if (h.flipper === idx){
+      const fl = h.flips.length ? h.flips.map(f => `${f.card}（${st.players[f.owner].name}）`).join(" → ") : "めくらなかった";
+      line = `めくり番｜めくったカード：${fl}`;
+    } else {
+      line = `出したカード：${h.placements[idx] || "―"}`;
+    }
+    return `<div style="border-bottom:1px solid rgba(243,233,210,.14); padding:7px 2px"><span style="color:var(--gold); font-size:12.5px">ターン ${h.turn}</span>　<span style="font-size:13.5px">${line}</span><br><span class="tiny">このターンの点数の動き：</span>${dStr}</div>`;
+  }).join("") || `<p class="tiny">記録がありません。</p>`;
+  $("result-detail").classList.remove("hidden");
+}
+$("btn-detail-close").addEventListener("click", () => $("result-detail").classList.add("hidden"));
+$("result-detail").addEventListener("click", e => { if (e.target === $("result-detail")) $("result-detail").classList.add("hidden"); });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
@@ -1010,6 +1084,7 @@ function snapFor(seat) {
   return {
     turn: st.turn, flipper: st.flipper, parent: st.parent, over: st.over,
     deckSize: st.deckSize, flipCount: st.flipCountThisTurn,
+    history: st.over ? st.history : null,
     flipped: [...st.flippedOwners], pending: st.pendingKinjutsu.slice(),
     players: st.players.map(p => ({
       idx: p.idx, name: p.name, color: p.color, isBot: p.isBot,
@@ -1170,6 +1245,7 @@ function applySnap(d) {
     n: snap.players.length, turn: snap.turn, flipper: snap.flipper, parent: snap.parent,
     deckSize: snap.deckSize, flipCountThisTurn: snap.flipCount, over: snap.over,
     flippedOwners: new Set(snap.flipped), pendingKinjutsu: snap.pending,
+    history: snap.history || [],
     players: snap.players.map(p => ({
       idx: p.idx, name: p.name, color: p.color, isBot: p.isBot,
       style: p.styleName ? { name: p.styleName } : null,
