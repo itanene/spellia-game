@@ -114,6 +114,7 @@
   .result-row{display:flex; justify-content:space-between; max-width:420px; margin:8px auto;
     background:rgba(0,0,0,.28); padding:10px 18px; border-radius:12px; font-size:16px}
   .result-row.win{border:1px solid var(--gold); color:var(--gold); font-weight:bold}
+  .card-link{color:var(--gold); text-decoration:underline dotted; text-underline-offset:3px; cursor:pointer}
 </style>
 </head>
 <body>
@@ -851,11 +852,13 @@ function renderResultStats(){
   }
   const maxCard = Math.max(...Object.values(byCard));
   const topCards = Object.keys(byCard).filter(c => byCard[c] === maxCard);
-  h += `<p class="tiny" style="margin:4px 0">一番めくられたカード：${topCards.join("、")}（${maxCard}回）</p>`;
+  h += `<p class="tiny" style="margin:4px 0">一番めくられたカード：${topCards.map(c => `<span class="card-link" data-view="${c}">${c}</span>`).join("、")}（${maxCard}回）</p>`;
   const maxPerson = Math.max(...Object.values(flippedCount));
   const topPeople = Object.keys(flippedCount).filter(i => flippedCount[i] === maxPerson).map(i => nm(+i));
   h += `<p class="tiny" style="margin:4px 0">一番めくられた人：${topPeople.join("、")}（${maxPerson}回）</p>`;
   el.innerHTML = h;
+  for (const el2 of el.querySelectorAll("[data-view]"))
+    el2.addEventListener("click", () => showCardBig(el2.dataset.view));
 }
 function openResultDetail(idx){
   const P = st.players[idx];
@@ -865,15 +868,18 @@ function openResultDetail(idx){
     const now = h.scores[idx];
     const d = now - prev; prev = now;
     const dStr = d > 0 ? `<span style="color:#7de08a">+${d}</span>` : d < 0 ? `<span style="color:#ff9d9a">${d}</span>` : `<span style="color:var(--dim)">±0</span>`;
+    const link = c => `<span class="card-link" data-view="${c}">${c}</span>`;
     let line;
     if (h.flipper === idx){
-      const fl = h.flips.length ? h.flips.map(f => `${f.card}（${st.players[f.owner].name}）`).join(" → ") : "めくらなかった";
+      const fl = h.flips.length ? h.flips.map(f => `${link(f.card)}（${st.players[f.owner].name}）`).join(" → ") : "めくらなかった";
       line = `めくり番｜めくったカード：${fl}`;
     } else {
-      line = `出したカード：${h.placements[idx] || "―"}`;
+      line = `出したカード：${h.placements[idx] ? link(h.placements[idx]) : "―"}`;
     }
     return `<div style="border-bottom:1px solid rgba(243,233,210,.14); padding:7px 2px"><span style="color:var(--gold); font-size:12.5px">ターン ${h.turn}</span>　<span style="font-size:13.5px">${line}</span><br><span class="tiny">このターンの点数の動き：</span>${dStr}</div>`;
   }).join("") || `<p class="tiny">記録がありません。</p>`;
+  for (const el of $("detail-list").querySelectorAll("[data-view]"))
+    el.addEventListener("click", () => showCardBig(el.dataset.view));
   $("result-detail").classList.remove("hidden");
 }
 $("btn-detail-close").addEventListener("click", () => $("result-detail").classList.add("hidden"));
