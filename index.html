@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d3038">
 <title>SPELLIA ブラウザ版｜AR × ボードゲーム卒業制作</title>
 <style>
   :root{
@@ -10,6 +11,7 @@
     --ink:#e9e2cf; --dim:#9db4b8; --danger:#e0655f; --good:#7ed492;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html{background:#0a262e}
   body{margin:0; background:radial-gradient(1200px 700px at 50% -10%, #14505c, var(--teal) 60%);
     color:var(--ink); font-family:"Hiragino Mincho ProN","Yu Mincho",serif; min-height:100vh}
   .hidden{display:none !important}
@@ -144,6 +146,7 @@
   <section id="screen-title">
     <p class="logo"><span class="star">✦</span>SPELLIA<span class="star">✦</span></p>
     <p class="subtitle">MAGIC SCHOOL / BOARD GAME</p>
+    <p style="text-align:center;margin:0 0 10px"><button class="opt" data-snd>🔊 音あり</button></p>
 
     <div class="panel">
       <h3>人数（あなた＋ボット）</h3>
@@ -164,19 +167,19 @@
 <div class="howto">
   <div class="hstep">
     <div class="hstrip"><img src="cards/back0.webp" alt="裏向きのカード"><img src="cards/back2.webp" alt="裏向きのカード"><img src="cards/back4.webp" alt="裏向きのカード"></div>
-    <p class="hcap"><b>① 置く</b>　めくる人以外は、手札から1枚、裏向きに置く</p>
+    <p class="hcap"><b>① 置く</b>　めくる人以外、1枚を裏向きに置く</p>
   </div>
   <div class="hstep">
     <div class="hstrip"><img src="cards/back1.webp" alt="裏向きのカード"><span class="harrow">➜</span><img src="cards/maseki.webp" alt="魔石"></div>
-    <p class="hcap"><b>② めくる</b>　めくる人が1枚ずつ開く（最初の1枚は必ず開く）</p>
+    <p class="hcap"><b>② めくる</b>　めくる人が1枚ずつ開く。最初は必ず1枚</p>
   </div>
   <div class="hstep">
     <div class="hstrip"><span class="hfig"><img src="cards/maseki.webp" alt="魔石"><span class="hbadge">+3</span></span><span class="hfig"><img src="cards/akugi.webp" alt="悪戯"><span class="hbadge minus">−2</span></span></div>
-    <p class="hcap"><b>③ 点数が動く</b>　良いカードで増え、悪いカードで減る。「もう1枚？　やめる？」は自由</p>
+    <p class="hcap"><b>③ 点数が動く</b>　めくった人の点が動く。良いと増え、悪いと減る。続けるかは自由</p>
   </div>
   <div class="hstep">
     <div class="hstrip"><span class="hbig">↻</span><img src="cards/back3.webp" alt="裏向きのカード"><span class="hbig">👑</span></div>
-    <p class="hcap"><b>④ 交代して、最後に勝ち負け</b>　次の人がめくる人に。全員のカードがなくなったら、点数が一番多い人の勝ち</p>
+    <p class="hcap"><b>④ 交代して、最後に勝ち負け</b>　次の人と交代。全員のカードがなくなったら、一番点が多い人の勝ち</p>
   </div>
 </div>
 <br>
@@ -264,19 +267,19 @@
 <div class="howto">
   <div class="hstep">
     <div class="hstrip"><img src="cards/back0.webp" alt="裏向きのカード"><img src="cards/back2.webp" alt="裏向きのカード"><img src="cards/back4.webp" alt="裏向きのカード"></div>
-    <p class="hcap"><b>① 置く</b>　めくる人以外は、手札から1枚、裏向きに置く</p>
+    <p class="hcap"><b>① 置く</b>　めくる人以外、1枚を裏向きに置く</p>
   </div>
   <div class="hstep">
     <div class="hstrip"><img src="cards/back1.webp" alt="裏向きのカード"><span class="harrow">➜</span><img src="cards/maseki.webp" alt="魔石"></div>
-    <p class="hcap"><b>② めくる</b>　めくる人が1枚ずつ開く（最初の1枚は必ず開く）</p>
+    <p class="hcap"><b>② めくる</b>　めくる人が1枚ずつ開く。最初は必ず1枚</p>
   </div>
   <div class="hstep">
     <div class="hstrip"><span class="hfig"><img src="cards/maseki.webp" alt="魔石"><span class="hbadge">+3</span></span><span class="hfig"><img src="cards/akugi.webp" alt="悪戯"><span class="hbadge minus">−2</span></span></div>
-    <p class="hcap"><b>③ 点数が動く</b>　良いカードで増え、悪いカードで減る。「もう1枚？　やめる？」は自由</p>
+    <p class="hcap"><b>③ 点数が動く</b>　めくった人の点が動く。良いと増え、悪いと減る。続けるかは自由</p>
   </div>
   <div class="hstep">
     <div class="hstrip"><span class="hbig">↻</span><img src="cards/back3.webp" alt="裏向きのカード"><span class="hbig">👑</span></div>
-    <p class="hcap"><b>④ 交代して、最後に勝ち負け</b>　次の人がめくる人に。全員のカードがなくなったら、点数が一番多い人の勝ち</p>
+    <p class="hcap"><b>④ 交代して、最後に勝ち負け</b>　次の人と交代。全員のカードがなくなったら、一番点が多い人の勝ち</p>
   </div>
 </div>
 <br>
@@ -324,6 +327,7 @@
       <span class="turn-badge" id="turn-badge">1 / 12 ターン</span>
       <span class="tiny" id="mode-label"></span>
       <button class="opt" id="btn-quit">タイトルに戻る</button>
+      <button class="opt" data-snd>🔊 音あり</button>
     </div>
     <div class="scoreboard" id="scoreboard"></div>
     <p class="phase-msg" id="phase-msg"></p>
@@ -361,32 +365,32 @@
     <div class="confirm-box intro-box" style="max-width:440px; margin:0 auto; text-align:left; position:relative; max-height:92dvh; display:flex; flex-direction:column">
       <button id="btn-intro-close" aria-label="閉じる" style="position:absolute; top:0; right:4px; background:none; border:none; color:var(--cream); font-size:27px; cursor:pointer; line-height:1; padding:4px 8px">✕</button>
       <p style="text-align:center; font-size:21px; color:var(--cream); letter-spacing:.12em; margin:2px 0 10px">✦ SPELLIAの遊び方 ✦</p>
-      <p class="tiny" style="text-align:center; font-size:13.5px; margin:0 0 10px">裏向きに置かれたカードをめくって、点数を競うゲームです。</p>
+      <p class="tiny" style="text-align:center; font-size:13.5px; margin:0 0 10px">裏向きのカードをめくって、点数を競うゲーム。</p>
       <div style="overflow-y:auto">
         <div class="ipage" id="ipage-0"><div class="howto">
 <div class="hstep">
     <div class="hstrip"><img src="cards/back0.webp" alt="裏向きのカード"><img src="cards/back2.webp" alt="裏向きのカード"><img src="cards/back4.webp" alt="裏向きのカード"></div>
-    <p class="hcap"><b>① 置く</b>　めくる人以外は、手札から1枚、裏向きに置く</p>
+    <p class="hcap"><b>① 置く</b>　めくる人以外、1枚を裏向きに置く</p>
   </div>
 <div class="hstep">
     <div class="hstrip"><img src="cards/back1.webp" alt="裏向きのカード"><span class="harrow">➜</span><img src="cards/maseki.webp" alt="魔石"></div>
-    <p class="hcap"><b>② めくる</b>　めくる人が1枚ずつ開く（最初の1枚は必ず開く）</p>
+    <p class="hcap"><b>② めくる</b>　めくる人が1枚ずつ開く。最初は必ず1枚</p>
   </div>
         </div></div>
         <div class="ipage hidden" id="ipage-1"><div class="howto">
 <div class="hstep">
     <div class="hstrip"><span class="hfig"><img src="cards/maseki.webp" alt="魔石"><span class="hbadge">+3</span></span><span class="hfig"><img src="cards/akugi.webp" alt="悪戯"><span class="hbadge minus">−2</span></span></div>
-    <p class="hcap"><b>③ 点数が動く</b>　めくった人のポイントが、良いカードで増え、悪いカードで減る。「もう1枚？　やめる？」は自由</p>
+    <p class="hcap"><b>③ 点数が動く</b>　めくった人の点が動く。良いと増え、悪いと減る。続けるかは自由</p>
   </div>
         </div>
-<p class="hcap" style="margin:10px 2px 6px"><b>カードによっていろいろ</b></p><div class="mini-rows"><div class="mini"><img src="cards/tsukaima.webp" alt="使い魔"><p><b>使い魔</b>：めくった人と持ち主、ふたりとも <b>+2</b></p></div><div class="mini"><img src="cards/shuseki.webp" alt="主席"><p><b>主席</b>：持ち主からポイントをもらう（持ち主が1位なら <b>3点</b>、ちがえば <b>1点</b>）</p></div><div class="mini"><img src="cards/yakusai.webp" alt="厄災"><p><b>厄災</b>：めくった人が、ほかの全員に <b>1点ずつ</b> 渡す</p></div><div class="mini"><img src="cards/bousou.webp" alt="暴走"><p><b>暴走</b>：めくった人 <b>+1</b>。でも、そのターンはそこでおしまい</p></div></div>
+<p class="hcap" style="margin:10px 2px 6px"><b>カードによっていろいろ</b></p><div class="mini-rows"><div class="mini"><img src="cards/tsukaima.webp" alt="使い魔"><p><b>使い魔</b>：ふたりとも <b>+2</b></p></div><div class="mini"><img src="cards/shuseki.webp" alt="主席"><p><b>主席</b>：持ち主からもらう。1位なら <b>3点</b>、ちがえば <b>1点</b></p></div><div class="mini"><img src="cards/yakusai.webp" alt="厄災"><p><b>厄災</b>：ほかの全員に <b>1点ずつ</b> 渡す</p></div><div class="mini"><img src="cards/bousou.webp" alt="暴走"><p><b>暴走</b>：<b>+1</b> して、ターン終了</p></div></div>
         </div>
         <div class="ipage hidden" id="ipage-2">
-<p class="hcap" style="margin:2px 2px 6px"><b>ターンの最後に起きること</b></p><div class="mini-rows"><div class="mini"><img src="cards/kinjutsu.webp" alt="禁術"><p><b>禁術</b>：すぐには何も起きない。最後に、そのターンでめくった人の点が増えていなければ <b>+4</b>、増えていたら <b>−2</b></p></div><div class="mini"><img src="cards/tenbin.webp" alt="天秤"><p><b>天秤</b>：めくられずに残ったら、持ち主がほかの全員から <b>1点ずつ</b> もらう</p></div></div>
+<p class="hcap" style="margin:2px 2px 6px"><b>ターンの最後に起きること</b></p><div class="mini-rows"><div class="mini"><img src="cards/kinjutsu.webp" alt="禁術"><p><b>禁術</b>：最後に発動。そのターン点が増えてなければ <b>+4</b>、増えてたら <b>−2</b></p></div><div class="mini"><img src="cards/tenbin.webp" alt="天秤"><p><b>天秤</b>：残ったら、持ち主が全員から <b>1点ずつ</b> もらう</p></div></div>
 <div class="howto" style="margin-top:10px">
 <div class="hstep">
     <div class="hstrip"><span class="hbig">↻</span><img src="cards/back3.webp" alt="裏向きのカード"><span class="hbig">👑</span></div>
-    <p class="hcap"><b>④ 交代して、最後に勝ち負け</b>　次の人がめくる人に。全員のカードがなくなったら、点数が一番多い人の勝ち</p>
+    <p class="hcap"><b>④ 交代して、最後に勝ち負け</b>　次の人と交代。全員のカードがなくなったら、一番点が多い人の勝ち</p>
   </div>
         </div>
         <p class="tiny" style="margin-top:10px">くわしいルールとカード効果は、タイトル画面の「ルールとカード効果を見る」から読めます。</p>
@@ -690,7 +694,79 @@ function showTitle() {
   $("screen-result").classList.add("hidden");
   $("screen-lobby").classList.add("hidden");
 }
+/* ===== 音（効果音・BGM：WebAudioで合成、音声ファイルなし） ===== */
+let AC = null, masterGain = null, bgmGain = null, bgmTimer = null, bgmStep = 0, noiseBuf = null;
+let soundOn = true;
+try { soundOn = localStorage.getItem("spellia-sound") !== "off"; } catch (e) {}
+function ensureAudio() {
+  if (!soundOn) return false;
+  try {
+    if (!AC) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return false;
+      AC = new Ctx();
+      masterGain = AC.createGain(); masterGain.gain.value = 0.9; masterGain.connect(AC.destination);
+      bgmGain = AC.createGain(); bgmGain.gain.value = 0.5; bgmGain.connect(masterGain);
+    }
+    if (AC.state === "suspended") AC.resume();
+    return true;
+  } catch (e) { return false; }
+}
+function tone(f0, f1, dur, type, vol, when, dest) {
+  if (!AC || !soundOn) return;
+  const t = AC.currentTime + (when || 0);
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || "sine";
+  o.frequency.setValueAtTime(f0, t);
+  if (f1) o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t + dur);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+  o.connect(g); g.connect(dest || masterGain);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function noiseHit(dur, fFrom, fTo, vol) {
+  if (!AC || !soundOn) return;
+  const t = AC.currentTime;
+  if (!noiseBuf) { noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.5, AC.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const src = AC.createBufferSource(); src.buffer = noiseBuf;
+  const f = AC.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.1;
+  f.frequency.setValueAtTime(fFrom, t); f.frequency.exponentialRampToValueAtTime(fTo, t + dur);
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+  src.connect(f); f.connect(g); g.connect(masterGain);
+  src.start(t); src.stop(t + dur + 0.05);
+}
+function sfxPlace() { if (!ensureAudio()) return; noiseHit(0.09, 900, 300, 0.20); tone(180, 90, 0.08, "sine", 0.12, 0); }
+function sfxFlip() { if (!ensureAudio()) return; noiseHit(0.13, 500, 2600, 0.16); }
+function sfxGood() { if (!ensureAudio()) return; tone(1318, 0, 0.12, "sine", 0.14, 0); tone(1760, 0, 0.2, "sine", 0.12, 0.07); }
+function sfxBad() { if (!ensureAudio()) return; tone(330, 196, 0.28, "triangle", 0.14, 0); }
+function sfxMagic() { if (!ensureAudio()) return; tone(196, 98, 0.5, "sine", 0.16, 0); tone(147, 73, 0.55, "triangle", 0.10, 0.05); }
+function sfxSparkle() { if (!ensureAudio()) return; [1046, 1318, 1568, 2093].forEach((f, i) => tone(f, 0, 0.16, "sine", 0.10, i * 0.06)); }
+function sfxWin() { if (!ensureAudio()) return; [523, 659, 784, 1046].forEach((f, i) => tone(f, 0, 0.22, "triangle", 0.13, i * 0.09)); }
+function sfxLose() { if (!ensureAudio()) return; [392, 330, 262].forEach((f, i) => tone(f, 0, 0.25, "triangle", 0.10, i * 0.11)); }
+const BGM_CHORDS = [[110, 220, 261.6, 329.6], [87.3, 174.6, 220, 261.6], [98, 196, 246.9, 293.7], [130.8, 261.6, 329.6, 392]];
+const BGM_BELLS = [440, 523.3, 587.3, 659.3, 784, 880];
+function bgmTick() {
+  if (!AC || !soundOn) return;
+  const ch = BGM_CHORDS[bgmStep % BGM_CHORDS.length]; bgmStep++;
+  for (const f of ch) tone(f, 0, 3.8, "sine", 0.045, 0, bgmGain);
+  tone(ch[0] / 2, 0, 3.8, "triangle", 0.05, 0, bgmGain);
+  if (Math.random() < 0.75) tone(BGM_BELLS[Math.floor(Math.random() * BGM_BELLS.length)], 0, 1.4, "sine", 0.05, 0.8 + Math.random() * 1.6, bgmGain);
+}
+function bgmStart() { if (!ensureAudio() || bgmTimer) return; bgmTick(); bgmTimer = setInterval(bgmTick, 4000); }
+function bgmStop() { if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; } }
+function syncSndBtns() { document.querySelectorAll("[data-snd]").forEach(b => b.textContent = soundOn ? "🔊 音あり" : "🔇 音なし"); }
+function toggleSound() {
+  soundOn = !soundOn;
+  try { localStorage.setItem("spellia-sound", soundOn ? "on" : "off"); } catch (e) {}
+  if (soundOn) { ensureAudio(); bgmStart(); } else bgmStop();
+  syncSndBtns();
+}
+document.querySelectorAll("[data-snd]").forEach(b => b.addEventListener("click", toggleSound));
+syncSndBtns();
+
 function startGame() {
+  ensureAudio(); bgmStart();
   ONLINE = false; MYIDX = 0;
   st = newGame(selCount, "rotate", Math.random);
   $("screen-title").classList.add("hidden");
@@ -826,6 +902,7 @@ async function humanPlace(handIdx) {
   const me = st.players[0];
   me.placed = me.hand.splice(handIdx, 1)[0];
   me.placedCount += 1;
+  sfxPlace();
   renderHand(false);
   renderTable(false);
   addLog(`全員がカードを伏せた。`);
@@ -860,6 +937,7 @@ async function flipPhase() {
 async function doFlip(ownerIdx) {
   const O = st.players[ownerIdx];
   const card = O.placed;
+  const ptsBefore = st.players[st.flipper].pts;
   st.lastCard = card;
   st.flipCountThisTurn += 1;
   const events = [];
@@ -869,6 +947,7 @@ async function doFlip(ownerIdx) {
   renderScores();
   for (const e of events) addLog(e);
   if (card === "暴走") { st.lastCard = "暴走"; }
+  sfxFlip(); const dPts = st.players[st.flipper].pts - ptsBefore; if (card === "禁術") sfxMagic(); else if (dPts > 0) sfxGood(); else if (dPts < 0) sfxBad();
 }
 async function humanFlip(ownerIdx) {
   if (busy) return; busy = true;
@@ -891,7 +970,9 @@ async function finishFlipping() {
   st.finishing = true;
   setActions("");
   const events = [];
+  const settleBefore = st.players[st.flipper].pts;
   settleTurn(st, events);
+  const settleDelta = st.players[st.flipper].pts - settleBefore; if (settleDelta > 0) sfxSparkle(); else if (settleDelta < 0) sfxBad();
   renderTable(false);
   renderScores();
   for (const e of events) addLog(`<span class="hd">${e}</span>`);
@@ -910,6 +991,7 @@ function showResult() {
   for (const row of $("result-list").querySelectorAll("[data-player]"))
     row.addEventListener("click", () => openResultDetail(+row.dataset.player));
   renderResultStats();
+  const myIdx = ONLINE ? MYIDX : 0; if (order[0] && order[0].idx === myIdx) sfxWin(); else sfxLose();
 }
 function computeMatchStats(){
   const byOwner = {}, byCard = {}, flippedCount = {};
@@ -1148,6 +1230,7 @@ $("lobby-size").addEventListener("click", e => {
 });
 
 function netStartGame() {
+  ensureAudio(); bgmStart();
   ONLINE = true; gameStarted = true; inLobby = false; MYIDX = 0; mySeat = 0;
   st = newGame(roomSize, "rotate", Math.random);
   st.players[0].name = myName(); st.players[0].isBot = false; st.players[0].style = null;
@@ -1213,6 +1296,7 @@ function hostApplyPlace(seat, cardName) {
   const i = p.hand.indexOf(cardName);
   if (i < 0) return;
   p.placed = p.hand.splice(i, 1)[0]; p.placedCount += 1;
+  if (seat === MYIDX) sfxPlace();
   netWaiting.delete(seat);
   if (netWaiting.size === 0) { netLogPush("全員がカードを伏せた。"); broadcastState("place"); netFlipPhase(); return; }
   broadcastState("place");
@@ -1251,8 +1335,10 @@ async function netDoFlip(ownerIdx) {
   st.lastCard = O.placed;
   st.flipCountThisTurn += 1;
   const events = [];
+  const ptsBefore = st.players[st.flipper].pts;
   applyFlip(st, ownerIdx, events);
   st.flippedOwners.add(ownerIdx);
+  sfxFlip(); const dPts = st.players[st.flipper].pts - ptsBefore; if (st.lastCard === "禁術") sfxMagic(); else if (dPts > 0) sfxGood(); else if (dPts < 0) sfxBad();
   netLogPush(...events);
   broadcastState("flip");
   netRenderHost();
@@ -1265,7 +1351,9 @@ async function netFinishFlipping() {
   if (netPhase !== "flip") return;
   netPhase = "settle";
   const events = [];
+  const settleBefore = st.players[st.flipper].pts;
   settleTurn(st, events);
+  const settleDelta = st.players[st.flipper].pts - settleBefore; if (settleDelta > 0) sfxSparkle(); else if (settleDelta < 0) sfxBad();
   netLogPush(...events.map(e => `<span class="hd">${e}</span>`));
   broadcastState("settle");
   netRenderHost();
