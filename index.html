@@ -368,22 +368,26 @@
     <div class="hstrip"><img src="cards/back0.webp" alt="裏向きのカード"><img src="cards/back2.webp" alt="裏向きのカード"><img src="cards/back4.webp" alt="裏向きのカード"></div>
     <p class="hcap"><b>① 置く</b>　めくる人以外、1枚を裏向きに置く</p>
   </div>
+        </div></div>
+        <div class="ipage hidden" id="ipage-1"><div class="howto">
 <div class="hstep">
     <div class="hstrip"><img src="cards/back1.webp" alt="裏向きのカード"><span class="harrow">➜</span><img src="cards/maseki.webp" alt="魔石"></div>
     <p class="hcap"><b>② めくる</b>　めくる人が1枚ずつ開く。最初は必ず1枚</p>
   </div>
         </div></div>
-        <div class="ipage hidden" id="ipage-1"><div class="howto">
+        <div class="ipage hidden" id="ipage-2"><div class="howto">
 <div class="hstep">
     <div class="hstrip"><span class="hfig"><img src="cards/maseki.webp" alt="魔石"><span class="hbadge">+3</span></span><span class="hfig"><img src="cards/akugi.webp" alt="悪戯"><span class="hbadge minus">−2</span></span></div>
     <p class="hcap"><b>③ 点数が動く</b>　めくった人の点が動く。良いと増え、悪いと減る。続けるかは自由</p>
   </div>
+        </div></div>
+        <div class="ipage hidden" id="ipage-3">
+<p class="hcap" style="margin:2px 2px 6px"><b>カードによっていろいろ</b></p><div class="mini-rows"><div class="mini"><img src="cards/tsukaima.webp" alt="使い魔"><p><b>使い魔</b>：ふたりとも <b>+2</b></p></div><div class="mini"><img src="cards/shuseki.webp" alt="主席"><p><b>主席</b>：持ち主からもらう。1位なら <b>3点</b>、ちがえば <b>1点</b></p></div><div class="mini"><img src="cards/yakusai.webp" alt="厄災"><p><b>厄災</b>：ほかの全員に <b>1点ずつ</b> 渡す</p></div><div class="mini"><img src="cards/bousou.webp" alt="暴走"><p><b>暴走</b>：<b>+1</b> して、ターン終了</p></div></div>
         </div>
-<p class="hcap" style="margin:10px 2px 6px"><b>カードによっていろいろ</b></p><div class="mini-rows"><div class="mini"><img src="cards/tsukaima.webp" alt="使い魔"><p><b>使い魔</b>：ふたりとも <b>+2</b></p></div><div class="mini"><img src="cards/shuseki.webp" alt="主席"><p><b>主席</b>：持ち主からもらう。1位なら <b>3点</b>、ちがえば <b>1点</b></p></div><div class="mini"><img src="cards/yakusai.webp" alt="厄災"><p><b>厄災</b>：ほかの全員に <b>1点ずつ</b> 渡す</p></div><div class="mini"><img src="cards/bousou.webp" alt="暴走"><p><b>暴走</b>：<b>+1</b> して、ターン終了</p></div></div>
-        </div>
-        <div class="ipage hidden" id="ipage-2">
+        <div class="ipage hidden" id="ipage-4">
 <p class="hcap" style="margin:2px 2px 6px"><b>ターンの最後に起きること</b></p><div class="mini-rows"><div class="mini"><img src="cards/kinjutsu.webp" alt="禁術"><p><b>禁術</b>：最後に発動。そのターン点が増えてなければ <b>+4</b>、増えてたら <b>−2</b></p></div><div class="mini"><img src="cards/tenbin.webp" alt="天秤"><p><b>天秤</b>：残ったら、持ち主が全員から <b>1点ずつ</b> もらう</p></div></div>
-<div class="howto" style="margin-top:10px">
+        </div>
+        <div class="ipage hidden" id="ipage-5"><div class="howto">
 <div class="hstep">
     <div class="hstrip"><span class="hbig">↻</span><img src="cards/back3.webp" alt="裏向きのカード"><span class="hbig">👑</span></div>
     <p class="hcap"><b>④ 交代して、最後に勝ち負け</b>　次の人と交代。全員のカードがなくなったら、一番点が多い人の勝ち</p>
@@ -392,7 +396,7 @@
         <p class="tiny" style="margin-top:10px">くわしいルールとカード効果は、タイトル画面の「ルールとカード効果を見る」から読めます。</p>
         </div>
       </div>
-      <div class="ipage-nav"><button class="act-btn ghost hidden" id="btn-intro-prev">← もどる</button><span class="tiny" id="ipage-ind">1 / 3</span><button class="act-btn" id="btn-intro-next">つぎへ →</button></div>
+      <div class="ipage-nav"><button class="act-btn ghost hidden" id="btn-intro-prev">← もどる</button><span class="tiny" id="ipage-ind">1 / 6</span><button class="act-btn" id="btn-intro-next">つぎへ →</button></div>
     </div>
   </div>
 
@@ -866,7 +870,7 @@ function askCardConfirm(name, cb){
 function closeCardConfirm(){ confirmCb = null; $("card-confirm").classList.add("hidden"); }
 $("btn-intro-close").addEventListener("click", () => $("intro-overlay").classList.add("hidden"));
 let introPage = 0;
-const INTRO_PAGES = 3;
+const INTRO_PAGES = 6;
 function showIntroPage(n){ introPage = n; for (let i=0;i<INTRO_PAGES;i++) $("ipage-"+i).classList.toggle("hidden", i!==n); $("ipage-ind").textContent = (n+1) + " / " + INTRO_PAGES; $("btn-intro-prev").classList.toggle("hidden", n===0); $("btn-intro-next").textContent = n===INTRO_PAGES-1 ? "とじる" : "つぎへ →"; }
 $("btn-intro-prev").addEventListener("click", () => showIntroPage(introPage-1));
 $("btn-intro-next").addEventListener("click", () => { if (introPage===INTRO_PAGES-1) $("intro-overlay").classList.add("hidden"); else showIntroPage(introPage+1); });
