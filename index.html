@@ -142,7 +142,7 @@
   .act-btn{background:var(--gold); color:#20303a; border:none; padding:11px 26px; border-radius:999px;
     font-size:15px; font-weight:bold}
   .act-btn.ghost{background:transparent; color:var(--ink); border:1px solid rgba(243,233,210,.5); font-weight:normal}
-  .hand{display:flex; justify-content:center; gap:9px; flex-wrap:wrap; margin-top:8px}
+  .hand{display:flex; justify-content:center; gap:9px; flex-wrap:wrap; margin-top:8px; padding-top:12px}
   .hand .card{cursor:pointer; width:92px; height:130px; transform:none}
   @media (hover:hover) and (pointer:fine){ .hand .card:hover{transform:translateY(-6px)} }
   .hand .card:active{transform:translateY(-2px)}
@@ -921,8 +921,17 @@ function showBanner(o){
   $("fb-deltas").innerHTML = o.deltas || "";
   b.classList.remove("hidden");
   if (fbTimer) clearTimeout(fbTimer);
-  fbTimer = setTimeout(() => b.classList.add("hidden"), o.ms || 2400);
+  fbTimer = setTimeout(hideBanner, o.ms || 2400);
 }
+function hideBanner(){
+  const b = $("flip-banner");
+  if (b) b.classList.add("hidden");
+  if (fbTimer) { clearTimeout(fbTimer); fbTimer = null; }
+}
+document.addEventListener("pointerdown", () => {
+  const b = $("flip-banner");
+  if (b && !b.classList.contains("hidden")) hideBanner();
+}, true);
 function flipBanner(ownerIdx, card, before){
   const F = st.players[st.flipper], O = st.players[ownerIdx];
   const info = CARD_INFO[card];
@@ -983,7 +992,7 @@ function placeHint(){
 function handCardHTML(c, i, recCard){
   const info = CARD_INFO[c];
   const rec = !!recCard && c === recCard;
-  return `<div class="card${rec ? " rec" : ""}" data-hand="${i}"><div class="face front" style="position:relative"><img class="art" src="cards/${info.key}.webp" alt="${c}">${rec ? '<span class="rec-badge">おすすめ</span>' : ""}</div></div>`;
+  return `<div class="card${rec ? " rec" : ""}" data-hand="${i}"><div class="face front" style="position:relative"><img class="art" src="cards/${info.key}.webp" alt="${c}"></div>${rec ? '<span class="rec-badge">おすすめ</span>' : ""}</div>`;
 }
 function showHint(){
   const h = placeHint();
