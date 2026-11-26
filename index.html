@@ -763,9 +763,9 @@ function noiseHit(dur, fFrom, fTo, vol) {
   src.start(t); src.stop(t + dur + 0.05);
 }
 function sfxPlace() { if (!ensureAudio()) return; noiseHit(0.06, 1500, 800, 0.10); }
-function sfxFlip() { if (!ensureAudio()) return; noiseHit(0.15, 900, 3200, 0.08); tone(2093, 0, 0.16, "sine", 0.035, 0.04); tone(2637, 0, 0.2, "sine", 0.025, 0.09); }
-function sfxGood() { if (!ensureAudio()) return; tone(1318, 0, 0.12, "sine", 0.14, 0); tone(1760, 0, 0.2, "sine", 0.12, 0.07); }
-function sfxBad() { if (!ensureAudio()) return; tone(330, 196, 0.28, "triangle", 0.14, 0); }
+function sfxFlip() { if (!ensureAudio()) return; noiseHit(0.15, 900, 3200, 0.06); tone(2093, 0, 0.16, "sine", 0.03, 0.04); tone(2637, 0, 0.2, "sine", 0.022, 0.09); tone(3136, 0, 0.24, "sine", 0.016, 0.14); }
+function sfxGood() { if (!ensureAudio()) return; [1046, 1318, 1568, 2093].forEach((f, i) => tone(f, 0, 0.5, "sine", 0.07, i * 0.055)); tone(2637, 0, 0.45, "sine", 0.028, 0.24); }
+function sfxBad() { if (!ensureAudio()) return; tone(784, 0, 0.45, "sine", 0.07, 0); tone(587, 0, 0.5, "sine", 0.06, 0.09); tone(440, 0, 0.6, "sine", 0.05, 0.18); tone(1175, 880, 0.3, "sine", 0.018, 0); }
 function sfxMagic() { if (!ensureAudio()) return; tone(196, 98, 0.5, "sine", 0.16, 0); tone(147, 73, 0.55, "triangle", 0.10, 0.05); }
 function sfxSparkle() { if (!ensureAudio()) return; [1046, 1318, 1568, 2093].forEach((f, i) => tone(f, 0, 0.16, "sine", 0.10, i * 0.06)); }
 function sfxWin() { if (!ensureAudio()) return; [523, 659, 784, 1046].forEach((f, i) => tone(f, 0, 0.22, "triangle", 0.13, i * 0.09)); }
