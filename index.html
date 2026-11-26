@@ -66,6 +66,7 @@
   #flip-banner .fb-name{font-size:23px; color:var(--cream); letter-spacing:.14em; margin:0}
   #flip-banner .fb-text{font-size:14.5px; color:var(--ink); line-height:1.55; margin:3px 0 6px}
   #flip-banner .fb-next{font-size:11.5px; color:var(--gold); margin:2px 0 0; letter-spacing:.1em}
+  #flip-banner .fb-ack{font-size:12px; color:var(--ink); margin:4px 0 0}
   .fb-chip{display:inline-block; font-size:13px; font-weight:bold; border-radius:999px; padding:2px 10px; margin:0 5px 3px 0; background:rgba(255,255,255,.08)}
   .fb-chip.plus{color:var(--good)} .fb-chip.minus{color:var(--danger)}
   .hint-line{text-align:center; font-size:13.5px; color:var(--gold); margin:8px 0 0; min-height:20px; line-height:1.5}
@@ -359,6 +360,7 @@
         <p class="fb-text" id="fb-text"></p>
         <p id="fb-deltas" style="margin:0"></p>
         <p id="fb-next" class="fb-next hidden">― タップで次へ ―</p>
+        <p id="fb-ack" class="fb-ack hidden"></p>
       </div>
     </div>
   </section>
@@ -914,7 +916,7 @@ function deltaHTML(before){
     .filter(x => x.d !== 0)
     .map(x => `<span class="fb-chip ${x.d > 0 ? "plus" : "minus"}">${x.n} ${x.d > 0 ? "+" : ""}${x.d}</span>`).join("");
 }
-let fbTapResolve = null, fbTapArmAt = 0, fbWaitPromise = null;
+let fbTapResolve = null, fbTapArmAt = 0, fbWaitPromise = null, fbMode = null;
 function armBannerWait(){
   fbTapArmAt = Date.now();
   fbWaitPromise = new Promise(r => { fbTapResolve = r; });
@@ -929,15 +931,23 @@ function showBanner(o){
   $("fb-deltas").innerHTML = o.deltas || "";
   b.classList.remove("hidden");
   if (fbTimer) clearTimeout(fbTimer);
-  if (o.waitTap) {
+  fbMode = o.mode || null;
+  if (o.mode === "tap") {
     fbTimer = null;
+    $("fb-next").textContent = "― タップで次へ ―";
     $("fb-next").classList.remove("hidden");
     armBannerWait();
+  } else if (o.mode === "ack") {
+    fbTimer = null;
+    fbWaitPromise = null;
+    $("fb-next").textContent = "― 読めたらタップ ―";
+    $("fb-next").classList.remove("hidden");
   } else {
     $("fb-next").classList.add("hidden");
     fbWaitPromise = null;
     fbTimer = setTimeout(hideBanner, o.ms || 2400);
   }
+  renderAckLine();
 }
 function hideBanner(){
   const b = $("flip-banner");
@@ -945,6 +955,8 @@ function hideBanner(){
   if (fbTimer) { clearTimeout(fbTimer); fbTimer = null; }
 }
 document.addEventListener("pointerdown", () => {
+  if (ONLINE && isHost && ackWait) { if (Date.now() - fbTapArmAt >= 500) noteAck(0); return; }
+  if (ONLINE && !isHost && guestAck) { guestTryAck(); return; }
   if (fbTapResolve) {
     if (Date.now() - fbTapArmAt >= 500) { const r = fbTapResolve; fbTapResolve = null; fbWaitPromise = null; hideBanner(); r(); }
     return;
@@ -952,7 +964,7 @@ document.addEventListener("pointerdown", () => {
   const b = $("flip-banner");
   if (b && !b.classList.contains("hidden")) hideBanner();
 }, true);
-function flipBanner(ownerIdx, card, before, waitTap){
+function flipBanner(ownerIdx, card, before, mode){
   const F = st.players[st.flipper], O = st.players[ownerIdx];
   const info = CARD_INFO[card];
   if (!info) return;
@@ -963,10 +975,10 @@ function flipBanner(ownerIdx, card, before, waitTap){
     text: info.text + (card === "禁術" ? "（発動はターンの最後）" : ""),
     deltas: deltaHTML(before),
     ms: 2400,
-    waitTap: !!waitTap,
+    mode: mode || null,
   });
 }
-function settleBanner(events, before, waitTap){
+function settleBanner(events, before, mode){
   if (!events.length) return false;
   showBanner({
     img: null,
@@ -975,7 +987,7 @@ function settleBanner(events, before, waitTap){
     text: events.join("<br>"),
     deltas: deltaHTML(before),
     ms: 2600,
-    waitTap: !!waitTap,
+    mode: mode || null,
   });
   return true;
 }
@@ -1103,7 +1115,7 @@ async function doFlip(ownerIdx, waitTap) {
   renderScores();
   for (const e of events) addLog(e);
   if (card === "暴走") { st.lastCard = "暴走"; }
-  flipBanner(ownerIdx, card, beforeAll, waitTap);
+  flipBanner(ownerIdx, card, beforeAll, waitTap ? "tap" : null);
   sfxFlip(); const dPts = st.players[st.flipper].pts - ptsBefore; if (card === "禁術") sfxMagic(); else if (dPts > 0) sfxGood(); else if (dPts < 0) sfxBad();
 }
 async function humanFlip(ownerIdx) {
@@ -1134,7 +1146,7 @@ async function finishFlipping() {
   renderTable(false);
   renderScores();
   for (const e of events) addLog(`<span class="hd">${e}</span>`);
-  const settleShown = settleBanner(events, settleBeforeAll, st.players[st.flipper].isBot);
+  const settleShown = settleBanner(events, settleBeforeAll, st.players[st.flipper].isBot ? "tap" : null);
   if (st.players[st.flipper].isBot && settleShown && fbWaitPromise) await fbWaitPromise;
   else await sleep(1800);
   addLog(`― ${st.turn + 1}ターン目が終わった ―`);
@@ -1236,6 +1248,11 @@ let netPhase = "lobby";     // ホスト側の進行フェイズ
 let netWaiting = new Set(); // ホスト側： まだ伏せていない人間の seat
 let pendingLog = [];        // 次の送信に同梱するログ行
 let guestPlaced = false;    // ゲスト側： このターンもう伏せたか
+let ackWait = null;         // ホスト側： 全員の確認待ち {wid, need:Set, got:Set, resolve, timer}
+let ackWid = 0;
+let lastAckDoneAt = 0;      // 確認待ちが終わった時刻（直後の誤タップめくり防止）
+let guestAck = null;        // ゲスト側： 現在の確認待ち {wid, need:[], got:[]}
+let guestAckedWid = 0;      // ゲスト側： ack送信済みの wid
 
 function netMsg(t) { const el = $("net-msg"); if (el) el.textContent = t || ""; }
 function myName() { const v = ($("net-name").value || "").trim(); return v ? v.slice(0, 10) : "プレイヤー"; }
@@ -1246,6 +1263,8 @@ function cleanupNet() {
   if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
   guestConns = {}; hostConn = null; members = [];
   inLobby = false; gameStarted = false; ONLINE = false;
+  if (ackWait) { if (ackWait.timer) clearTimeout(ackWait.timer); const r = ackWait.resolve; ackWait = null; if (r) r(); }
+  guestAck = null;
 }
 $("btn-start").addEventListener("click", () => cleanupNet());
 $("btn-again").addEventListener("click", () => cleanupNet());
@@ -1327,6 +1346,11 @@ function hostOnGuestGone(conn) {
   if (p && !p.isBot) {
     p.isBot = true; p.style = BOT_STYLES[Math.floor(Math.random() * BOT_STYLES.length)];
     netLogPush(`${p.name} の接続が切れたので、ボットが引き継ぎます`);
+    if (ackWait && ackWait.need.has(seat)) {
+      ackWait.need.delete(seat);
+      if (ackWait.got.size >= ackWait.need.size) finishAckWait();
+      else { broadcastAckState(); renderAckLine(); }
+    }
     if (netPhase === "place" && netWaiting.has(seat)) {
       p.placed = botChoosePlace(st, seat); p.placedCount++;
       netWaiting.delete(seat);
@@ -1377,6 +1401,17 @@ function guestOnData(d) {
     addLog(`<span class="hd">ネット対戦開始。</span>`);
   }
   else if (d.t === "state") applySnap(d);
+  else if (d.t === "ackstate") {
+    if (d.need && d.need.length) {
+      guestAck = { wid: d.wid, need: d.need, got: d.got };
+      if (fbTimer) { clearTimeout(fbTimer); fbTimer = null; }
+      if (fbMode !== "ack") { fbMode = "ack"; $("fb-next").textContent = "― 読めたらタップ ―"; $("fb-next").classList.remove("hidden"); }
+    } else {
+      guestAck = null;
+      setTimeout(() => { if (!guestAck && !ackWait) hideBanner(); }, 700);
+    }
+    renderAckLine();
+  }
 }
 
 /* ===== ホスト：対戦開始と進行 ===== */
@@ -1436,6 +1471,64 @@ function broadcastState(phase) {
   }
 }
 
+/* ===== オンライン：全員がタップ（確認）するまで次へ進まない ===== */
+function ackNeededSeats(){
+  return st.players.filter(p => !p.isBot && (p.idx === 0 || (guestConns[p.idx] && guestConns[p.idx].open))).map(p => p.idx);
+}
+function broadcastAckState(){
+  const msg = ackWait ? { t: "ackstate", wid: ackWait.wid, need: [...ackWait.need], got: [...ackWait.got] } : { t: "ackstate", wid: ackWid, need: [], got: [] };
+  for (const seat in guestConns) { const c = guestConns[seat]; if (c && c.open) c.send(msg); }
+}
+function waitAllAcks(){
+  const need = ackNeededSeats();
+  ackWid += 1;
+  return new Promise(resolve => {
+    ackWait = { wid: ackWid, need: new Set(need), got: new Set(), resolve, timer: null };
+    fbTapArmAt = Date.now();
+    broadcastAckState();
+    renderAckLine();
+    if (!need.length) { finishAckWait(); return; }
+    ackWait.timer = setTimeout(finishAckWait, 60000);
+  });
+}
+function noteAck(seat){
+  if (!ackWait || !ackWait.need.has(seat) || ackWait.got.has(seat)) return;
+  ackWait.got.add(seat);
+  broadcastAckState();
+  renderAckLine();
+  if (ackWait.got.size >= ackWait.need.size) finishAckWait();
+}
+function finishAckWait(){
+  if (!ackWait) return;
+  if (ackWait.timer) clearTimeout(ackWait.timer);
+  const r = ackWait.resolve;
+  ackWait = null;
+  lastAckDoneAt = Date.now();
+  broadcastAckState();
+  renderAckLine();
+  r();
+}
+function guestTryAck(){
+  if (!guestAck || guestAckedWid === guestAck.wid) return;
+  if (!guestAck.need.includes(mySeat) || guestAck.got.includes(mySeat)) return;
+  guestAckedWid = guestAck.wid;
+  guestAck.got = [...guestAck.got, mySeat];
+  if (hostConn && hostConn.open) hostConn.send({ t: "ack" });
+  renderAckLine();
+}
+function renderAckLine(){
+  const el = $("fb-ack");
+  if (!el) return;
+  let s = null;
+  if (ONLINE && isHost && ackWait) s = { need: [...ackWait.need], got: [...ackWait.got], self: 0 };
+  else if (ONLINE && !isHost && guestAck) s = { need: guestAck.need, got: guestAck.got, self: mySeat };
+  if (!s || !s.need.length || !st || !st.players) { el.classList.add("hidden"); return; }
+  el.textContent = "確認： " + s.need.map(seat => (s.got.includes(seat) ? "✓ " : "… ") + (st.players[seat] ? st.players[seat].name : "?")).join("　");
+  el.classList.remove("hidden");
+  const nx = $("fb-next");
+  if (nx && fbMode === "ack") nx.textContent = s.got.includes(s.self) ? "― 他の人を待っています ―" : "― 読めたらタップ ―";
+}
+
 async function netNextTurn() {
   if (st.over) { broadcastState("over"); showResult(); return; }
   st.flipper = decideFlipper(st);
@@ -1464,8 +1557,10 @@ function hostApplyPlace(seat, cardName) {
 }
 function hostGameAction(seat, d) {
   if (!st || st.over) return;
+  if (d.t === "ack") { noteAck(seat); return; }
+  if (ackWait) return;
   if (d.t === "place" && netPhase === "place") hostApplyPlace(seat, d.card);
-  else if (d.t === "flip" && netPhase === "flip" && st.flipper === seat) netDoFlip(d.target);
+  else if (d.t === "flip" && netPhase === "flip" && st.flipper === seat && Date.now() - lastAckDoneAt >= 350) netDoFlip(d.target);
   else if (d.t === "stop" && netPhase === "flip" && st.flipper === seat && st.flipCountThisTurn >= 1) netFinishFlipping();
 }
 
@@ -1477,20 +1572,24 @@ async function netFlipPhase() {
   netRenderHost();
   if (F.isBot) { await sleep(700); netBotFlipRun(); }
 }
+let botRunActive = false;
 async function netBotFlipRun() {
-  while (netPhase === "flip") {
-    const t = botDecideFlip(st);
-    if (t < 0) break;
-    await netDoFlip(t, true);
-    if (fbWaitPromise) await fbWaitPromise;
-    await sleep(250);
-    if (st.lastCard === "暴走") break;
-    if (!st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) break;
-  }
-  if (netPhase === "flip") netFinishFlipping();
+  if (botRunActive) return;
+  botRunActive = true;
+  try {
+    while (netPhase === "flip") {
+      const t = botDecideFlip(st);
+      if (t < 0) break;
+      await netDoFlip(t);
+      await sleep(250);
+      if (st.lastCard === "暴走") break;
+      if (!st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) break;
+    }
+    if (netPhase === "flip") netFinishFlipping();
+  } finally { botRunActive = false; }
 }
-async function netDoFlip(ownerIdx, waitTap) {
-  if (netPhase !== "flip") return;
+async function netDoFlip(ownerIdx) {
+  if (netPhase !== "flip" || ackWait) return;
   const O = st.players[ownerIdx];
   if (!O || !O.placed || O.idx === st.flipper || st.flippedOwners.has(ownerIdx)) return;
   st.lastCard = O.placed;
@@ -1504,14 +1603,13 @@ async function netDoFlip(ownerIdx, waitTap) {
   netLogPush(...events);
   broadcastState("flip");
   netRenderHost();
-  flipBanner(ownerIdx, O.placed, beforeAll, waitTap);
-  if (!waitTap && (st.lastCard === "暴走" || !st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx)))) {
-    await sleep(500);
-    netFinishFlipping();
-  }
+  flipBanner(ownerIdx, O.placed, beforeAll, "ack");
+  await waitAllAcks();
+  if (netPhase !== "flip") return;
+  if (st.lastCard === "暴走" || !st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) netFinishFlipping();
 }
 async function netFinishFlipping() {
-  if (netPhase !== "flip") return;
+  if (netPhase !== "flip" || ackWait) return;
   netPhase = "settle";
   const events = [];
   const settleBeforeAll = snapPts();
@@ -1521,9 +1619,9 @@ async function netFinishFlipping() {
   netLogPush(...events.map(e => `<span class="hd">${e}</span>`));
   broadcastState("settle");
   netRenderHost();
-  const netSettleShown = settleBanner(events, settleBeforeAll, st.players[st.flipper].isBot);
-  if (st.players[st.flipper].isBot && netSettleShown && fbWaitPromise) await fbWaitPromise;
-  else await sleep(1800);
+  const netSettleShown = settleBanner(events, settleBeforeAll, "ack");
+  if (netSettleShown) await waitAllAcks();
+  else await sleep(600);
   netLogPush(`― ${st.turn + 1}ターン目が終わった ―`);
   endTurnBookkeeping(st);
   netNextTurn();
@@ -1563,14 +1661,14 @@ function netRenderHost() {
     renderHand(false);
     if (st.flipper === 0) {
       setPhase("あなたのめくり番", "他の人のカードをタップしてめくろう。最低1枚はめくってね（暴走を引くと自動で終了）");
-      markTappable(idx => netDoFlip(idx));
+      markTappable(idx => { if (!ackWait && Date.now() - lastAckDoneAt >= 350) netDoFlip(idx); });
       if (st.flipCountThisTurn <= 0) setActions(`<span class="tiny">最低1枚はめくってね</span>`);
       else {
         setActions(`<button class="act-btn" id="btn-stop">やめる（${st.flipCountThisTurn}枚めくった）</button>`);
         $("btn-stop").addEventListener("click", () => netFinishFlipping());
       }
     } else {
-      setPhase(`${F.name} のめくり番`, F.isBot ? "ボットがめくっているよ…" : `${F.name} がめくっているよ…`);
+      setPhase(`${F.name} のめくり番`, F.isBot ? "ボットがめくっているよ…（全員がタップすると次へ進むよ）" : `${F.name} がめくっているよ…（全員がタップすると次へ進むよ）`);
       setActions("");
     }
   } else {
@@ -1603,10 +1701,10 @@ function applySnap(d) {
     const newFlips = snap.flipped.filter(x => !prevFlipped.has(x));
     if (d.phase === "flip" && newFlips.length === 1) {
       const oi = newFlips[0];
-      flipBanner(oi, st.players[oi].placed, prevPts);
+      flipBanner(oi, st.players[oi].placed, prevPts, "ack");
     } else if (d.phase === "settle") {
       const lines = (d.log || []).map(l => l.replace(/<[^>]+>/g, "")).filter(l => l.includes("効果"));
-      if (lines.length && prevPts.some((v, i) => v !== st.players[i].pts)) settleBanner(lines, prevPts);
+      if (lines.length && prevPts.some((v, i) => v !== st.players[i].pts)) settleBanner(lines, prevPts, "ack");
     }
   }
   for (const l of d.log || []) addLog(l);
@@ -1647,7 +1745,7 @@ function netRenderGuest(phase) {
         $("btn-stop").addEventListener("click", () => hostConn.send({ t: "stop" }));
       }
     } else {
-      setPhase(`${F.name} のめくり番`, `${F.name} がめくっているよ…`);
+      setPhase(`${F.name} のめくり番`, `${F.name} がめくっているよ…（全員がタップすると次へ進むよ）`);
       setActions("");
     }
   } else {
