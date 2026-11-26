@@ -873,7 +873,7 @@ function renderTable(tappable) {
   for (const p of st.players) {
     if (!p.placed || !st.flippedOwners.has(p.idx)) continue;
     const el = document.querySelector(`[data-slot="${p.idx}"] .card`);
-    if (el) { el.style.cursor = "pointer"; el.addEventListener("click", () => showCardBig(p.placed)); }
+    if (el) { el.style.cursor = "pointer"; el.addEventListener("click", () => { if (!fbTapResolve && !ackWait && !guestAck) showCardBig(p.placed); }); }
   }
 }
 function renderHand(onPick) {
@@ -1506,6 +1506,7 @@ function finishAckWait(){
   lastAckDoneAt = Date.now();
   broadcastAckState();
   renderAckLine();
+  setTimeout(() => { if (!ackWait && fbMode === "ack") hideBanner(); }, 400);
   r();
 }
 function guestTryAck(){
