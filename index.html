@@ -235,7 +235,7 @@
   <section id="screen-title">
     <p class="logo"><span class="star">✦</span>SPELLIA<span class="star">✦</span></p>
     <p class="subtitle">MAGIC SCHOOL / BOARD GAME</p>
-    <p style="text-align:center;margin:0 0 10px"><button class="opt" data-snd>🔊 音あり</button></p>
+    <p style="text-align:center;margin:0 0 10px"><button class="opt" data-snd>🔊 音あり</button> <button class="opt" data-bgm>🎵 BGM：神秘</button></p>
 
     <div class="panel">
       <h3>人数（あなた＋ボット）</h3>
@@ -405,6 +405,7 @@
       <span class="tiny" id="mode-label"></span>
       <button class="opt" id="btn-quit">タイトルに戻る</button>
       <button class="opt" data-snd>🔊 音あり</button>
+      <button class="opt" data-bgm>🎵 BGM：神秘</button>
     </div>
     <div class="scoreboard" id="scoreboard"></div>
     <p class="phase-msg" id="phase-msg"></p>
@@ -861,16 +862,38 @@ function sfxMagic() { if (!ensureAudio()) return; tone(196, 98, 0.5, "sine", 0.1
 function sfxSparkle() { if (!ensureAudio()) return; [1046, 1318, 1568, 2093].forEach((f, i) => tone(f, 0, 0.16, "sine", 0.10, i * 0.06)); }
 function sfxWin() { if (!ensureAudio()) return; [523, 659, 784, 1046].forEach((f, i) => tone(f, 0, 0.22, "triangle", 0.13, i * 0.09)); }
 function sfxLose() { if (!ensureAudio()) return; [392, 330, 262].forEach((f, i) => tone(f, 0, 0.25, "triangle", 0.10, i * 0.11)); }
-const BGM_CHORDS = [[110, 220, 261.6, 329.6], [87.3, 174.6, 220, 261.6], [98, 196, 246.9, 293.7], [130.8, 261.6, 329.6, 392]];
-const BGM_BELLS = [440, 523.3, 587.3, 659.3, 784, 880];
+const BGM_TYPES = {
+  mystic: { label: "神秘", interval: 4000, dur: 3.8, pad: "sine", padVol: 0.045, bellChance: 0.75,
+    chords: [[110, 220, 261.6, 329.6], [87.3, 174.6, 220, 261.6], [98, 196, 246.9, 293.7], [130.8, 261.6, 329.6, 392]],
+    bells: [440, 523.3, 587.3, 659.3, 784, 880] },
+  bright: { label: "明るい", interval: 2600, dur: 2.4, pad: "triangle", padVol: 0.04, bellChance: 0.95,
+    chords: [[130.8, 261.6, 329.6, 392], [98, 196, 293.7, 392], [110, 220, 261.6, 329.6], [87.3, 174.6, 293.7, 349.2]],
+    bells: [523.3, 587.3, 659.3, 784, 880, 1046.5] },
+  dark: { label: "ダーク", interval: 5200, dur: 5.0, pad: "sine", padVol: 0.055, bellChance: 0.3,
+    chords: [[55, 110, 130.8, 164.8], [43.7, 87.3, 110, 130.8], [49, 98, 146.8, 164.8], [65.4, 130.8, 155.6, 196]],
+    bells: [220, 261.6, 311.1, 329.6] },
+};
+const BGM_ORDER = ["mystic", "bright", "dark"];
+let bgmType = "mystic";
+try { const v = localStorage.getItem("spellia-bgm"); if (v && BGM_TYPES[v]) bgmType = v; } catch (e) {}
 function bgmTick() {
   if (!AC || !soundOn) return;
-  const ch = BGM_CHORDS[bgmStep % BGM_CHORDS.length]; bgmStep++;
-  for (const f of ch) tone(f, 0, 3.8, "sine", 0.045, 0, bgmGain);
-  tone(ch[0] / 2, 0, 3.8, "triangle", 0.05, 0, bgmGain);
-  if (Math.random() < 0.75) tone(BGM_BELLS[Math.floor(Math.random() * BGM_BELLS.length)], 0, 1.4, "sine", 0.05, 0.8 + Math.random() * 1.6, bgmGain);
+  const T = BGM_TYPES[bgmType];
+  const ch = T.chords[bgmStep % T.chords.length]; bgmStep++;
+  for (const f of ch) tone(f, 0, T.dur, T.pad, T.padVol, 0, bgmGain);
+  tone(ch[0] / 2, 0, T.dur, "triangle", 0.05, 0, bgmGain);
+  if (Math.random() < T.bellChance) tone(T.bells[Math.floor(Math.random() * T.bells.length)], 0, 1.4, "sine", 0.05, 0.6 + Math.random() * 1.4, bgmGain);
 }
-function bgmStart() { if (!ensureAudio() || bgmTimer) return; bgmTick(); bgmTimer = setInterval(bgmTick, 4000); }
+function bgmStart() { if (!ensureAudio() || bgmTimer) return; bgmTick(); bgmTimer = setInterval(bgmTick, BGM_TYPES[bgmType].interval); }
+function syncBgmBtns() { document.querySelectorAll("[data-bgm]").forEach(b => b.textContent = "🎵 BGM：" + BGM_TYPES[bgmType].label); }
+function cycleBgm() {
+  bgmType = BGM_ORDER[(BGM_ORDER.indexOf(bgmType) + 1) % BGM_ORDER.length];
+  try { localStorage.setItem("spellia-bgm", bgmType); } catch (e) {}
+  syncBgmBtns();
+  if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; bgmStart(); }
+}
+document.querySelectorAll("[data-bgm]").forEach(b => b.addEventListener("click", cycleBgm));
+syncBgmBtns();
 function bgmStop() { if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; } }
 function syncSndBtns() { document.querySelectorAll("[data-snd]").forEach(b => b.textContent = soundOn ? "🔊 音あり" : "🔇 音なし"); }
 function toggleSound() {
