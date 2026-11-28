@@ -66,13 +66,24 @@
   #flip-banner .fb-name{font-size:23px; color:var(--cream); letter-spacing:.14em; margin:0}
   #flip-banner .fb-text{font-size:15.5px; color:var(--ink); line-height:1.6; margin:3px 0 6px;
     font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic",sans-serif}
-  #fx-bar{position:fixed; left:50%; bottom:10px; transform:translateX(-50%); z-index:65;
-    display:flex; gap:12px; align-items:center; width:min(94vw,520px);
-    background:rgba(4,18,24,.97); border:1.5px solid var(--gold); border-radius:14px;
-    padding:9px 14px; box-shadow:0 10px 30px rgba(0,0,0,.65)}
-  #fx-bar img{height:66px; width:auto; border-radius:7px}
-  #fx-bar .fx-name{font-size:19px; color:var(--cream); letter-spacing:.1em; margin:0}
-  #fx-bar .fx-text{font-size:16.5px; color:var(--ink); line-height:1.55; margin:2px 0 5px;
+  #fx-panel{background:rgba(4,18,24,.92); border:1.5px solid rgba(212,175,55,.65); border-radius:12px;
+    padding:4px 14px 8px; margin-top:14px}
+  .fx-row{display:flex; gap:11px; align-items:flex-start; padding:7px 0 3px}
+  .fx-row + .fx-row{border-top:1px solid rgba(243,233,210,.13)}
+  .fx-row img{height:46px; width:auto; border-radius:5px}
+  .fx-row .fx-name{font-size:16px; color:var(--cream); letter-spacing:.08em; margin:0}
+  .fx-row .fx-text{font-size:14px; color:var(--ink); line-height:1.5; margin:1px 0 4px;
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic",sans-serif}
+  #flip-banner.summary{flex-direction:column; align-items:stretch; width:min(94vw,480px); max-height:82dvh}
+  #flip-banner.summary > div{overflow-y:auto}
+  .sum-row{display:flex; gap:11px; align-items:flex-start; padding:8px 0 4px}
+  .sum-row + .sum-row{border-top:1px solid rgba(243,233,210,.13)}
+  .sum-row img{height:52px; width:auto; border-radius:5px}
+  .sum-row .sum-ic{font-size:21px; color:var(--gold); width:37px; text-align:center; padding-top:8px}
+  .sum-name{font-size:16.5px; color:var(--cream); letter-spacing:.08em; margin:0}
+  .sum-text{font-size:13.5px; color:var(--dim); line-height:1.5; margin:1px 0 2px;
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic",sans-serif}
+  .sum-ev{font-size:14.5px; color:var(--ink); line-height:1.55; margin:1px 0 4px;
     font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic",sans-serif}
   #flip-banner .fb-next{font-size:11.5px; color:var(--gold); margin:2px 0 0; letter-spacing:.1em}
   #flip-banner .fb-ack{font-size:12px; color:var(--ink); margin:4px 0 0}
@@ -364,6 +375,7 @@
     <p class="hand-label" id="hand-label"></p>
     <div class="hand" id="hand"></div>
     <p class="hint-line" id="hint-line"></p>
+    <div id="fx-panel" class="hidden"></div>
     <div class="log" id="log"></div>
     <div id="flip-banner" class="hidden">
       <img id="fb-img" alt="">
@@ -372,16 +384,9 @@
         <p class="fb-name" id="fb-name"></p>
         <p class="fb-text" id="fb-text"></p>
         <p id="fb-deltas" style="margin:0"></p>
+        <div id="fb-sum" class="hidden"></div>
         <p id="fb-next" class="fb-next hidden">― タップで次へ ―</p>
         <p id="fb-ack" class="fb-ack hidden"></p>
-      </div>
-    </div>
-    <div id="fx-bar" class="hidden">
-      <img id="fx-img" alt="">
-      <div>
-        <p class="fx-name" id="fx-name"></p>
-        <p class="fx-text" id="fx-text"></p>
-        <p id="fx-deltas" style="margin:0"></p>
       </div>
     </div>
   </section>
@@ -742,7 +747,7 @@ $("btn-totitle").addEventListener("click", () => showTitle());
 $("btn-quit").addEventListener("click", () => showTitle());
 
 function showTitle() {
-  hideFxBar();
+  clearFxPanel();
   $("screen-title").classList.remove("hidden");
   $("screen-game").classList.add("hidden");
   $("screen-result").classList.add("hidden");
@@ -838,7 +843,7 @@ function startGame() {
   $("screen-lobby").classList.add("hidden");
   $("screen-game").classList.remove("hidden");
   $("mode-label").textContent = "めくる人：時計回り";
-  $("log").innerHTML = "";
+  $("log").innerHTML = ""; clearFxPanel();
   addLog(`<span class="hd">試験開始。</span>最初の親は ${st.players[st.parent].name}。`);
   nextTurn();
 }
@@ -947,12 +952,31 @@ function armBannerWait(){
 }
 function showBanner(o){
   const b = $("flip-banner");
-  $("fb-img").style.display = o.img ? "" : "none";
-  if (o.img) $("fb-img").src = o.img;
-  $("fb-title").textContent = o.title || "";
-  $("fb-name").textContent = o.name || "";
-  $("fb-text").innerHTML = o.text || "";
-  $("fb-deltas").innerHTML = o.deltas || "";
+  const sum = $("fb-sum");
+  if (o.sumHTML) {
+    b.classList.add("summary");
+    $("fb-img").style.display = "none";
+    $("fb-title").style.display = "none";
+    $("fb-name").style.display = "none";
+    $("fb-text").style.display = "none";
+    $("fb-deltas").style.display = "none";
+    sum.innerHTML = o.sumHTML;
+    sum.classList.remove("hidden");
+  } else {
+    b.classList.remove("summary");
+    sum.classList.add("hidden");
+    sum.innerHTML = "";
+    $("fb-title").style.display = "";
+    $("fb-name").style.display = "";
+    $("fb-text").style.display = "";
+    $("fb-deltas").style.display = "";
+    $("fb-img").style.display = o.img ? "" : "none";
+    if (o.img) $("fb-img").src = o.img;
+    $("fb-title").textContent = o.title || "";
+    $("fb-name").textContent = o.name || "";
+    $("fb-text").innerHTML = o.text || "";
+    $("fb-deltas").innerHTML = o.deltas || "";
+  }
   b.classList.remove("hidden");
   if (fbTimer) clearTimeout(fbTimer);
   fbMode = o.mode || null;
@@ -1016,30 +1040,57 @@ function settleBanner(events, before, mode){
   return true;
 }
 
-/* ===== めくり中の効果は画面下の固定バーに表示（タップ不要） ===== */
-function showFxBar(ownerIdx, card, before){
-  const info = CARD_INFO[card];
-  if (!info) return;
-  const O = st.players[ownerIdx];
-  $("fx-img").src = "cards/" + info.key + ".webp";
-  $("fx-name").textContent = `${O.name} の ${card}`;
-  $("fx-text").textContent = info.text + (card === "禁術" ? "（発動はターンの最後）" : "");
-  $("fx-deltas").innerHTML = deltaHTML(before);
-  $("fx-bar").classList.remove("hidden");
+/* ===== めくり中の効果：ログの上のパネルに、そのターンの間ずっと表示 ===== */
+let turnFx = [];          // このターンの記録 {card, owner, events[], before[], after[]} / {settle:true, events[], before[], after[]}
+let turnStartPts = null;  // ターン開始時点の全員の点数
+function deltaHTML2(before, after){
+  return st.players.map((p, i) => ({ n: p.name, d: after[i] - before[i] }))
+    .filter(x => x.d !== 0)
+    .map(x => `<span class="fb-chip ${x.d > 0 ? "plus" : "minus"}">${x.n} ${x.d > 0 ? "+" : ""}${x.d}</span>`).join("");
 }
-function hideFxBar(){ const b = $("fx-bar"); if (b) b.classList.add("hidden"); }
+function fxRowHTML(e){
+  const info = CARD_INFO[e.card];
+  const O = st.players[e.owner];
+  return `<div class="fx-row"><img src="cards/${info.key}.webp" alt="">` +
+    `<div><p class="fx-name">${O.name} の ${e.card}</p>` +
+    `<p class="fx-text">${info.text}${e.card === "禁術" ? "（発動はターンの最後）" : ""}</p>` +
+    `<p style="margin:0">${deltaHTML2(e.before, e.after)}</p></div></div>`;
+}
+function addFxRow(e){
+  const p = $("fx-panel");
+  p.insertAdjacentHTML("beforeend", fxRowHTML(e));
+  p.classList.remove("hidden");
+}
+function clearFxPanel(){
+  const p = $("fx-panel");
+  if (!p) return;
+  p.innerHTML = "";
+  p.classList.add("hidden");
+}
 
-/* ===== ターン終わりの「発動した効果まとめ」 ===== */
-let turnFx = [];          // このターンに発動した効果の行（まとめ表示用）
-let turnStartPts = null;  // ターン開始時点の全員の点数（まとめの増減表示用）
+/* ===== ターン終わりの「発動した効果まとめ」（縦リスト・起きた順） ===== */
+function sumRowHTML(e){
+  if (e.settle) {
+    return `<div class="sum-row"><div class="sum-ic">✦</div>` +
+      `<div><p class="sum-name">ターンの最後</p>` +
+      `<p class="sum-ev">${e.events.join("<br>")}</p>` +
+      `<p style="margin:0">${deltaHTML2(e.before, e.after)}</p></div></div>`;
+  }
+  const info = CARD_INFO[e.card];
+  const O = st.players[e.owner];
+  return `<div class="sum-row"><img src="cards/${info.key}.webp" alt="">` +
+    `<div><p class="sum-name">${O.name} の ${e.card}</p>` +
+    `<p class="sum-text">${info.text}</p>` +
+    `<p class="sum-ev">${e.events.join("<br>")}</p>` +
+    `<p style="margin:0">${deltaHTML2(e.before, e.after)}</p></div></div>`;
+}
 function summaryBanner(mode){
   if (!turnFx.length) return false;
   showBanner({
-    img: null,
-    title: "ターンのまとめ",
-    name: st.players[st.flipper].name + " のターン",
-    text: turnFx.join("<br>"),
-    deltas: turnStartPts ? deltaHTML(turnStartPts) : "",
+    sumHTML: `<p class="fb-title">ターンのまとめ</p>` +
+      `<p class="fb-name" style="font-size:20px">${st.players[st.flipper].name} のターン</p>` +
+      turnFx.map(sumRowHTML).join("") +
+      (turnStartPts ? `<p style="margin:8px 0 0">${deltaHTML2(turnStartPts, snapPts())}</p>` : ""),
     ms: 2600,
     mode: mode || null,
   });
@@ -1168,9 +1219,11 @@ async function doFlip(ownerIdx) {
   if (card === "禁術") { /* flippedOwners には settle 後に pile へ入れるため印だけ */ st.flippedOwners.add(ownerIdx); }
   renderTable(false);
   renderScores();
-  for (const e of events) { addLog(e); turnFx.push(`【${card}】${e}`); }
+  for (const e of events) addLog(e);
+  const fxEntry = { card, owner: ownerIdx, events: events.slice(), before: beforeAll, after: snapPts() };
+  turnFx.push(fxEntry);
   if (card === "暴走") { st.lastCard = "暴走"; }
-  showFxBar(ownerIdx, card, beforeAll);
+  addFxRow(fxEntry);
   sfxFlip(); const dPts = st.players[st.flipper].pts - ptsBefore; if (card === "禁術") sfxMagic(); else if (dPts > 0) sfxGood(); else if (dPts < 0) sfxBad();
 }
 async function humanFlip(ownerIdx) {
@@ -1200,18 +1253,19 @@ async function finishFlipping() {
   const settleDelta = st.players[st.flipper].pts - settleBefore; if (settleDelta > 0) sfxSparkle(); else if (settleDelta < 0) sfxBad();
   renderTable(false);
   renderScores();
-  for (const e of events) { addLog(`<span class="hd">${e}</span>`); turnFx.push(e); }
-  hideFxBar();
+  for (const e of events) addLog(`<span class="hd">${e}</span>`);
+  if (events.length) turnFx.push({ settle: true, events: events.slice(), before: settleBeforeAll, after: snapPts() });
   const sumShown = summaryBanner("tap");
   if (sumShown && fbWaitPromise) await fbWaitPromise;
   else await sleep(1200);
+  clearFxPanel();
   addLog(`― ${st.turn + 1}ターン目が終わった ―`);
   endTurnBookkeeping(st);
   st.finishing = false;
   nextTurn();
 }
 function showResult() {
-  hideFxBar();
+  clearFxPanel();
   $("screen-game").classList.add("hidden");
   $("screen-result").classList.remove("hidden");
   const order = st.players.slice().sort((a, b) => b.pts - a.pts);
@@ -1454,7 +1508,7 @@ function guestOnData(d) {
     $("screen-lobby").classList.add("hidden");
     $("screen-game").classList.remove("hidden");
     $("mode-label").textContent = "ネット対戦　部屋 " + roomCode;
-    $("log").innerHTML = "";
+    $("log").innerHTML = ""; clearFxPanel();
     addLog(`<span class="hd">ネット対戦開始。</span>`);
   }
   else if (d.t === "state") applySnap(d);
@@ -1495,7 +1549,7 @@ function netStartGame() {
   $("screen-result").classList.add("hidden");
   $("screen-game").classList.remove("hidden");
   $("mode-label").textContent = "ネット対戦　部屋 " + roomCode;
-  $("log").innerHTML = "";
+  $("log").innerHTML = ""; clearFxPanel();
   addLog(`<span class="hd">ネット対戦開始。</span>最初の親は ${st.players[st.parent].name}。`);
   for (const seat in guestConns) { const c = guestConns[seat]; if (c && c.open) c.send({ t: "start" }); }
   netNextTurn();
@@ -1664,10 +1718,11 @@ async function netDoFlip(ownerIdx) {
     st.flippedOwners.add(ownerIdx);
     sfxFlip(); const dPts = st.players[st.flipper].pts - ptsBefore; if (st.lastCard === "禁術") sfxMagic(); else if (dPts > 0) sfxGood(); else if (dPts < 0) sfxBad();
     netLogPush(...events);
-    for (const e of events) turnFx.push(`【${O.placed}】${e}`);
+    const fxEntry = { card: O.placed, owner: ownerIdx, events: events.slice(), before: beforeAll, after: snapPts() };
+    turnFx.push(fxEntry);
     broadcastState("flip");
     netRenderHost();
-    showFxBar(ownerIdx, O.placed, beforeAll);
+    addFxRow(fxEntry);
     if (netPhase !== "flip") return;
     if (st.lastCard === "暴走" || !st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) netFinishFlipping();
   } finally { netFlipBusy = false; }
@@ -1681,13 +1736,13 @@ async function netFinishFlipping() {
   settleTurn(st, events);
   const settleDelta = st.players[st.flipper].pts - settleBefore; if (settleDelta > 0) sfxSparkle(); else if (settleDelta < 0) sfxBad();
   netLogPush(...events.map(e => `<span class="hd">${e}</span>`));
-  for (const e of events) turnFx.push(e);
-  hideFxBar();
+  if (events.length) turnFx.push({ settle: true, events: events.slice(), before: settleBeforeAll, after: snapPts() });
   broadcastState("settle", { summary: turnFx.slice() });
   netRenderHost();
   const netSumShown = summaryBanner("ack");
   if (netSumShown) await waitAllAcks();
   else await sleep(600);
+  clearFxPanel();
   netLogPush(`― ${st.turn + 1}ターン目が終わった ―`);
   endTurnBookkeeping(st);
   netNextTurn();
@@ -1763,14 +1818,13 @@ function applySnap(d) {
     })),
   };
   MYIDX = mySeat;
-  if (d.phase === "place") turnStartPts = st.players.map(p => p.pts);
+  if (d.phase === "place") { turnStartPts = st.players.map(p => p.pts); clearFxPanel(); }
   if (prevPts) {
     const newFlips = snap.flipped.filter(x => !prevFlipped.has(x));
     if (d.phase === "flip" && newFlips.length === 1) {
       const oi = newFlips[0];
-      showFxBar(oi, st.players[oi].placed, prevPts);
+      addFxRow({ card: st.players[oi].placed, owner: oi, events: (d.log || []).map(l => l.replace(/<[^>]+>/g, "")), before: prevPts, after: st.players.map(p => p.pts) });
     } else if (d.phase === "settle") {
-      hideFxBar();
       turnFx = (d.summary || []).slice();
       summaryBanner("ack");
     }
