@@ -62,6 +62,8 @@
     background:rgba(8,30,37,.97); border:1.5px solid var(--gold); border-radius:14px;
     padding:10px 14px; box-shadow:0 12px 34px rgba(0,0,0,.6); pointer-events:none}
   #flip-banner img{height:min(104px, 26vmin); width:auto; border-radius:8px}
+  #fb-close{position:absolute; top:4px; right:6px; background:none; border:none; color:var(--cream);
+    font-size:21px; line-height:1; padding:6px 9px; cursor:pointer; pointer-events:auto; z-index:2}
   #flip-banner .fb-title{font-size:12px; color:var(--dim); margin:0 0 2px}
   #flip-banner .fb-name{font-size:23px; color:var(--cream); letter-spacing:.14em; margin:0}
   #flip-banner .fb-text{font-size:15.5px; color:var(--ink); line-height:1.6; margin:3px 0 6px;
@@ -378,6 +380,7 @@
     <div id="fx-panel" class="hidden"></div>
     <div class="log" id="log"></div>
     <div id="flip-banner" class="hidden">
+      <button id="fb-close" class="hidden" aria-label="閉じる">✕</button>
       <img id="fb-img" alt="">
       <div>
         <p class="fb-title" id="fb-title"></p>
@@ -385,7 +388,7 @@
         <p class="fb-text" id="fb-text"></p>
         <p id="fb-deltas" style="margin:0"></p>
         <div id="fb-sum" class="hidden"></div>
-        <p id="fb-next" class="fb-next hidden">― タップで次へ ―</p>
+        <p id="fb-next" class="fb-next hidden">― 右上の✕で次へ ―</p>
         <p id="fb-ack" class="fb-ack hidden"></p>
       </div>
     </div>
@@ -978,17 +981,18 @@ function showBanner(o){
     $("fb-deltas").innerHTML = o.deltas || "";
   }
   b.classList.remove("hidden");
+  $("fb-close").classList.toggle("hidden", !o.sumHTML);
   if (fbTimer) clearTimeout(fbTimer);
   fbMode = o.mode || null;
   if (o.mode === "tap") {
     fbTimer = null;
-    $("fb-next").textContent = "― タップで次へ ―";
+    $("fb-next").textContent = "― 右上の✕で次へ ―";
     $("fb-next").classList.remove("hidden");
     armBannerWait();
   } else if (o.mode === "ack") {
     fbTimer = null;
     fbWaitPromise = null;
-    $("fb-next").textContent = "― 読めたらタップ ―";
+    $("fb-next").textContent = "― 読めたら右上の✕ ―";
     $("fb-next").classList.remove("hidden");
   } else {
     $("fb-next").classList.add("hidden");
@@ -1002,15 +1006,14 @@ function hideBanner(){
   if (b) b.classList.add("hidden");
   if (fbTimer) { clearTimeout(fbTimer); fbTimer = null; }
 }
-document.addEventListener("pointerdown", () => {
+document.addEventListener("pointerdown", (e) => {
+  if (!e.target || e.target.id !== "fb-close") return;
   if (ONLINE && isHost && ackWait) { if (Date.now() - fbTapArmAt >= 500) noteAck(0); return; }
   if (ONLINE && !isHost && guestAck) { guestTryAck(); return; }
   if (fbTapResolve) {
     if (Date.now() - fbTapArmAt >= 500) { const r = fbTapResolve; fbTapResolve = null; fbWaitPromise = null; hideBanner(); r(); }
     return;
   }
-  const b = $("flip-banner");
-  if (b && !b.classList.contains("hidden")) hideBanner();
 }, true);
 function flipBanner(ownerIdx, card, before, mode){
   const F = st.players[st.flipper], O = st.players[ownerIdx];
@@ -1090,7 +1093,7 @@ function summaryBanner(mode){
     sumHTML: `<p class="fb-title">ターンのまとめ</p>` +
       `<p class="fb-name" style="font-size:20px">${st.players[st.flipper].name} のターン</p>` +
       turnFx.map(sumRowHTML).join("") +
-      (turnStartPts ? `<p style="margin:8px 0 0">${deltaHTML2(turnStartPts, snapPts())}</p>` : ""),
+      (turnStartPts ? `<p style="margin:8px 0 0"><span style="color:var(--gold); font-size:13px; margin-right:6px">合計</span>${deltaHTML2(turnStartPts, snapPts())}</p>` : ""),
     ms: 2600,
     mode: mode || null,
   });
@@ -1516,7 +1519,7 @@ function guestOnData(d) {
     if (d.need && d.need.length) {
       guestAck = { wid: d.wid, need: d.need, got: d.got };
       if (fbTimer) { clearTimeout(fbTimer); fbTimer = null; }
-      if (fbMode !== "ack") { fbMode = "ack"; $("fb-next").textContent = "― 読めたらタップ ―"; $("fb-next").classList.remove("hidden"); }
+      if (fbMode !== "ack") { fbMode = "ack"; $("fb-next").textContent = "― 読めたら右上の✕ ―"; $("fb-next").classList.remove("hidden"); }
     } else {
       guestAck = null;
       setTimeout(() => { if (!guestAck && !ackWait) hideBanner(); }, 700);
@@ -1638,7 +1641,7 @@ function renderAckLine(){
   el.textContent = "確認： " + s.need.map(seat => (s.got.includes(seat) ? "✓ " : "… ") + (st.players[seat] ? st.players[seat].name : "?")).join("　");
   el.classList.remove("hidden");
   const nx = $("fb-next");
-  if (nx && fbMode === "ack") nx.textContent = s.got.includes(s.self) ? "― 他の人を待っています ―" : "― 読めたらタップ ―";
+  if (nx && fbMode === "ack") nx.textContent = s.got.includes(s.self) ? "― 他の人を待っています ―" : "― 読めたら右上の✕ ―";
 }
 
 async function netNextTurn() {
