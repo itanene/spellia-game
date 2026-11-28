@@ -58,13 +58,22 @@
   .phase-msg{text-align:center; font-size:17px; color:var(--cream); margin:8px 0 4px; min-height:26px}
   .phase-sub{text-align:center; font-size:12px; color:var(--dim); margin-bottom:10px; min-height:16px}
   #flip-banner{position:fixed; left:50%; top:64px; transform:translateX(-50%); z-index:70;
-    display:flex; gap:12px; align-items:center; width:min(92vw,430px);
+    display:flex; gap:12px; align-items:center; width:min(92vw,470px); max-height:64dvh;
     background:rgba(8,30,37,.97); border:1.5px solid var(--gold); border-radius:14px;
     padding:10px 14px; box-shadow:0 12px 34px rgba(0,0,0,.6); pointer-events:none}
   #flip-banner img{height:min(104px, 26vmin); width:auto; border-radius:8px}
   #flip-banner .fb-title{font-size:12px; color:var(--dim); margin:0 0 2px}
   #flip-banner .fb-name{font-size:23px; color:var(--cream); letter-spacing:.14em; margin:0}
-  #flip-banner .fb-text{font-size:14.5px; color:var(--ink); line-height:1.55; margin:3px 0 6px}
+  #flip-banner .fb-text{font-size:15.5px; color:var(--ink); line-height:1.6; margin:3px 0 6px;
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic",sans-serif}
+  #fx-bar{position:fixed; left:50%; bottom:10px; transform:translateX(-50%); z-index:65;
+    display:flex; gap:12px; align-items:center; width:min(94vw,520px);
+    background:rgba(4,18,24,.97); border:1.5px solid var(--gold); border-radius:14px;
+    padding:9px 14px; box-shadow:0 10px 30px rgba(0,0,0,.65)}
+  #fx-bar img{height:66px; width:auto; border-radius:7px}
+  #fx-bar .fx-name{font-size:19px; color:var(--cream); letter-spacing:.1em; margin:0}
+  #fx-bar .fx-text{font-size:16.5px; color:var(--ink); line-height:1.55; margin:2px 0 5px;
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic",sans-serif}
   #flip-banner .fb-next{font-size:11.5px; color:var(--gold); margin:2px 0 0; letter-spacing:.1em}
   #flip-banner .fb-ack{font-size:12px; color:var(--ink); margin:4px 0 0}
   .fb-chip{display:inline-block; font-size:13px; font-weight:bold; border-radius:999px; padding:2px 10px; margin:0 5px 3px 0; background:rgba(255,255,255,.08)}
@@ -103,8 +112,12 @@
   .confirm-box{text-align:center; padding:18px; width:100%; max-height:94dvh; overflow-y:auto}
   .confirm-q{font-size:20px; color:var(--cream); letter-spacing:.1em; margin:0 0 12px}
   .confirm-box img{max-width:min(78vw,290px); max-height:52dvh; border-radius:12px; box-shadow:0 10px 36px rgba(0,0,0,.6)}
-  .confirm-name{font-size:19px; color:var(--cream); margin:12px 0 2px; letter-spacing:.12em}
-  .confirm-text{font-size:12.5px; color:var(--dim); margin:0; line-height:1.6}
+  .confirm-name{font-size:23px; color:var(--cream); margin:12px 0 2px; letter-spacing:.12em}
+  .confirm-text{font-size:16.5px; color:var(--ink); margin:0; line-height:1.65;
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic",sans-serif}
+  .view-panel{background:rgba(3,14,18,.9); border:1px solid rgba(212,175,55,.5); border-radius:12px;
+    padding:4px 16px 14px; margin-top:12px}
+  .view-panel .confirm-name{margin-top:8px}
   .confirm-btns{display:flex; gap:10px; justify-content:center; margin-top:16px}
   .rule-item{cursor:pointer}
   .howto{display:flex;flex-direction:column;gap:10px}
@@ -152,7 +165,7 @@
   .hand .card .front{transform:none}
   .hand-label{text-align:center; font-size:12px; color:var(--dim); margin-top:14px}
 
-  .log{background:rgba(0,0,0,.3); border-radius:12px; padding:10px 14px; font-size:12.5px;
+  .log{background:rgba(0,0,0,.3); border-radius:12px; padding:10px 14px; font-size:14px;
     line-height:1.85; height:148px; overflow-y:auto; margin-top:16px}
   .log .hd{color:var(--gold)}
   .log .bad{color:var(--danger)} .log .nice{color:var(--good)}
@@ -363,6 +376,14 @@
         <p id="fb-ack" class="fb-ack hidden"></p>
       </div>
     </div>
+    <div id="fx-bar" class="hidden">
+      <img id="fx-img" alt="">
+      <div>
+        <p class="fx-name" id="fx-name"></p>
+        <p class="fx-text" id="fx-text"></p>
+        <p id="fx-deltas" style="margin:0"></p>
+      </div>
+    </div>
   </section>
 
   <!-- 結果 -->
@@ -434,8 +455,10 @@
   <div id="card-view" class="confirm-bg hidden">
     <div class="confirm-box">
       <img id="view-img" alt="">
-      <p class="confirm-name" id="view-name"></p>
-      <p class="confirm-text" id="view-text"></p>
+      <div class="view-panel">
+        <p class="confirm-name" id="view-name"></p>
+        <p class="confirm-text" id="view-text"></p>
+      </div>
       <div class="confirm-btns">
         <button class="act-btn" id="btn-view-close">閉じる</button>
       </div>
@@ -719,6 +742,7 @@ $("btn-totitle").addEventListener("click", () => showTitle());
 $("btn-quit").addEventListener("click", () => showTitle());
 
 function showTitle() {
+  hideFxBar();
   $("screen-title").classList.remove("hidden");
   $("screen-game").classList.add("hidden");
   $("screen-result").classList.add("hidden");
@@ -992,6 +1016,36 @@ function settleBanner(events, before, mode){
   return true;
 }
 
+/* ===== めくり中の効果は画面下の固定バーに表示（タップ不要） ===== */
+function showFxBar(ownerIdx, card, before){
+  const info = CARD_INFO[card];
+  if (!info) return;
+  const O = st.players[ownerIdx];
+  $("fx-img").src = "cards/" + info.key + ".webp";
+  $("fx-name").textContent = `${O.name} の ${card}`;
+  $("fx-text").textContent = info.text + (card === "禁術" ? "（発動はターンの最後）" : "");
+  $("fx-deltas").innerHTML = deltaHTML(before);
+  $("fx-bar").classList.remove("hidden");
+}
+function hideFxBar(){ const b = $("fx-bar"); if (b) b.classList.add("hidden"); }
+
+/* ===== ターン終わりの「発動した効果まとめ」 ===== */
+let turnFx = [];          // このターンに発動した効果の行（まとめ表示用）
+let turnStartPts = null;  // ターン開始時点の全員の点数（まとめの増減表示用）
+function summaryBanner(mode){
+  if (!turnFx.length) return false;
+  showBanner({
+    img: null,
+    title: "ターンのまとめ",
+    name: st.players[st.flipper].name + " のターン",
+    text: turnFx.join("<br>"),
+    deltas: turnStartPts ? deltaHTML(turnStartPts) : "",
+    ms: 2600,
+    mode: mode || null,
+  });
+  return true;
+}
+
 /* ===== 出すカードのヒント ===== */
 function placeHint(){
   const me = st.players[MYIDX];
@@ -1078,6 +1132,8 @@ async function humanPlace(handIdx) {
 async function flipPhase() {
   const F = st.players[st.flipper];
   st.flipStartPts = F.pts;
+  turnFx = [];
+  turnStartPts = snapPts();
   renderScores();
   if (!F.isBot) {
     setPhase(`${F.name} のめくり番`, "他の人のカードをタップしてめくろう。最低1枚はめくってね（暴走を引くと自動で終了）");
@@ -1085,23 +1141,22 @@ async function flipPhase() {
     showStopUI();
     busy = false;
   } else {
-    setPhase(`${F.name} のめくり番`, "ボットがめくっているよ…（カードが出たら、タップで次へ進むよ）");
+    setPhase(`${F.name} のめくり番`, "ボットがめくっているよ…");
     renderTable(false);
     setActions("");
     await sleep(650);
     while (true) {
       const target = botDecideFlip(st);
       if (target < 0) break;
-      await doFlip(target, true);
-      if (fbWaitPromise) await fbWaitPromise;
-      await sleep(250);
+      await doFlip(target);
+      await sleep(1600);
       if (st.lastCard === "暴走") break;
       if (!st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) break;
     }
     finishFlipping();
   }
 }
-async function doFlip(ownerIdx, waitTap) {
+async function doFlip(ownerIdx) {
   const O = st.players[ownerIdx];
   const card = O.placed;
   const beforeAll = snapPts();
@@ -1113,9 +1168,9 @@ async function doFlip(ownerIdx, waitTap) {
   if (card === "禁術") { /* flippedOwners には settle 後に pile へ入れるため印だけ */ st.flippedOwners.add(ownerIdx); }
   renderTable(false);
   renderScores();
-  for (const e of events) addLog(e);
+  for (const e of events) { addLog(e); turnFx.push(`【${card}】${e}`); }
   if (card === "暴走") { st.lastCard = "暴走"; }
-  flipBanner(ownerIdx, card, beforeAll, waitTap ? "tap" : null);
+  showFxBar(ownerIdx, card, beforeAll);
   sfxFlip(); const dPts = st.players[st.flipper].pts - ptsBefore; if (card === "禁術") sfxMagic(); else if (dPts > 0) sfxGood(); else if (dPts < 0) sfxBad();
 }
 async function humanFlip(ownerIdx) {
@@ -1145,16 +1200,18 @@ async function finishFlipping() {
   const settleDelta = st.players[st.flipper].pts - settleBefore; if (settleDelta > 0) sfxSparkle(); else if (settleDelta < 0) sfxBad();
   renderTable(false);
   renderScores();
-  for (const e of events) addLog(`<span class="hd">${e}</span>`);
-  const settleShown = settleBanner(events, settleBeforeAll, st.players[st.flipper].isBot ? "tap" : null);
-  if (st.players[st.flipper].isBot && settleShown && fbWaitPromise) await fbWaitPromise;
-  else await sleep(1800);
+  for (const e of events) { addLog(`<span class="hd">${e}</span>`); turnFx.push(e); }
+  hideFxBar();
+  const sumShown = summaryBanner("tap");
+  if (sumShown && fbWaitPromise) await fbWaitPromise;
+  else await sleep(1200);
   addLog(`― ${st.turn + 1}ターン目が終わった ―`);
   endTurnBookkeeping(st);
   st.finishing = false;
   nextTurn();
 }
 function showResult() {
+  hideFxBar();
   $("screen-game").classList.add("hidden");
   $("screen-result").classList.remove("hidden");
   const order = st.players.slice().sort((a, b) => b.pts - a.pts);
@@ -1463,11 +1520,11 @@ function snapFor(seat) {
     })),
   };
 }
-function broadcastState(phase) {
+function broadcastState(phase, extra) {
   const logs = pendingLog.splice(0);
   for (const seat in guestConns) {
     const c = guestConns[seat];
-    if (c && c.open) c.send({ t: "state", phase, snap: snapFor(+seat), log: logs });
+    if (c && c.open) c.send(Object.assign({ t: "state", phase, snap: snapFor(+seat), log: logs }, extra || {}));
   }
 }
 
@@ -1569,6 +1626,8 @@ async function netFlipPhase() {
   netPhase = "flip";
   const F = st.players[st.flipper];
   st.flipStartPts = F.pts;
+  turnFx = [];
+  turnStartPts = snapPts();
   broadcastState("flip");
   netRenderHost();
   if (F.isBot) { await sleep(700); netBotFlipRun(); }
@@ -1582,32 +1641,36 @@ async function netBotFlipRun() {
       const t = botDecideFlip(st);
       if (t < 0) break;
       await netDoFlip(t);
-      await sleep(250);
+      await sleep(1500);
       if (st.lastCard === "暴走") break;
       if (!st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) break;
     }
     if (netPhase === "flip") netFinishFlipping();
   } finally { botRunActive = false; }
 }
+let netFlipBusy = false;
 async function netDoFlip(ownerIdx) {
-  if (netPhase !== "flip" || ackWait) return;
+  if (netPhase !== "flip" || ackWait || netFlipBusy) return;
   const O = st.players[ownerIdx];
   if (!O || !O.placed || O.idx === st.flipper || st.flippedOwners.has(ownerIdx)) return;
-  st.lastCard = O.placed;
-  st.flipCountThisTurn += 1;
-  const events = [];
-  const beforeAll = snapPts();
-  const ptsBefore = beforeAll[st.flipper];
-  applyFlip(st, ownerIdx, events);
-  st.flippedOwners.add(ownerIdx);
-  sfxFlip(); const dPts = st.players[st.flipper].pts - ptsBefore; if (st.lastCard === "禁術") sfxMagic(); else if (dPts > 0) sfxGood(); else if (dPts < 0) sfxBad();
-  netLogPush(...events);
-  broadcastState("flip");
-  netRenderHost();
-  flipBanner(ownerIdx, O.placed, beforeAll, "ack");
-  await waitAllAcks();
-  if (netPhase !== "flip") return;
-  if (st.lastCard === "暴走" || !st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) netFinishFlipping();
+  netFlipBusy = true;
+  try {
+    st.lastCard = O.placed;
+    st.flipCountThisTurn += 1;
+    const events = [];
+    const beforeAll = snapPts();
+    const ptsBefore = beforeAll[st.flipper];
+    applyFlip(st, ownerIdx, events);
+    st.flippedOwners.add(ownerIdx);
+    sfxFlip(); const dPts = st.players[st.flipper].pts - ptsBefore; if (st.lastCard === "禁術") sfxMagic(); else if (dPts > 0) sfxGood(); else if (dPts < 0) sfxBad();
+    netLogPush(...events);
+    for (const e of events) turnFx.push(`【${O.placed}】${e}`);
+    broadcastState("flip");
+    netRenderHost();
+    showFxBar(ownerIdx, O.placed, beforeAll);
+    if (netPhase !== "flip") return;
+    if (st.lastCard === "暴走" || !st.players.some(p => p.placed && p.idx !== st.flipper && !st.flippedOwners.has(p.idx))) netFinishFlipping();
+  } finally { netFlipBusy = false; }
 }
 async function netFinishFlipping() {
   if (netPhase !== "flip" || ackWait) return;
@@ -1618,10 +1681,12 @@ async function netFinishFlipping() {
   settleTurn(st, events);
   const settleDelta = st.players[st.flipper].pts - settleBefore; if (settleDelta > 0) sfxSparkle(); else if (settleDelta < 0) sfxBad();
   netLogPush(...events.map(e => `<span class="hd">${e}</span>`));
-  broadcastState("settle");
+  for (const e of events) turnFx.push(e);
+  hideFxBar();
+  broadcastState("settle", { summary: turnFx.slice() });
   netRenderHost();
-  const netSettleShown = settleBanner(events, settleBeforeAll, "ack");
-  if (netSettleShown) await waitAllAcks();
+  const netSumShown = summaryBanner("ack");
+  if (netSumShown) await waitAllAcks();
   else await sleep(600);
   netLogPush(`― ${st.turn + 1}ターン目が終わった ―`);
   endTurnBookkeeping(st);
@@ -1669,7 +1734,7 @@ function netRenderHost() {
         $("btn-stop").addEventListener("click", () => netFinishFlipping());
       }
     } else {
-      setPhase(`${F.name} のめくり番`, F.isBot ? "ボットがめくっているよ…（全員がタップすると次へ進むよ）" : `${F.name} がめくっているよ…（全員がタップすると次へ進むよ）`);
+      setPhase(`${F.name} のめくり番`, F.isBot ? "ボットがめくっているよ…" : `${F.name} がめくっているよ…`);
       setActions("");
     }
   } else {
@@ -1698,14 +1763,16 @@ function applySnap(d) {
     })),
   };
   MYIDX = mySeat;
+  if (d.phase === "place") turnStartPts = st.players.map(p => p.pts);
   if (prevPts) {
     const newFlips = snap.flipped.filter(x => !prevFlipped.has(x));
     if (d.phase === "flip" && newFlips.length === 1) {
       const oi = newFlips[0];
-      flipBanner(oi, st.players[oi].placed, prevPts, "ack");
+      showFxBar(oi, st.players[oi].placed, prevPts);
     } else if (d.phase === "settle") {
-      const lines = (d.log || []).map(l => l.replace(/<[^>]+>/g, "")).filter(l => l.includes("効果"));
-      if (lines.length && prevPts.some((v, i) => v !== st.players[i].pts)) settleBanner(lines, prevPts, "ack");
+      hideFxBar();
+      turnFx = (d.summary || []).slice();
+      summaryBanner("ack");
     }
   }
   for (const l of d.log || []) addLog(l);
@@ -1746,7 +1813,7 @@ function netRenderGuest(phase) {
         $("btn-stop").addEventListener("click", () => hostConn.send({ t: "stop" }));
       }
     } else {
-      setPhase(`${F.name} のめくり番`, `${F.name} がめくっているよ…（全員がタップすると次へ進むよ）`);
+      setPhase(`${F.name} のめくり番`, `${F.name} がめくっているよ…`);
       setActions("");
     }
   } else {
