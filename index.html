@@ -94,6 +94,7 @@
     border-radius:6px; align-items:center; justify-content:center; font-weight:700; font-size:15px; margin-right:5px;
     box-shadow:0 2px 6px rgba(0,0,0,.4)}
   .mini-card.red{color:#b03a3a}
+  .mini-card.back{background:#14424f; color:var(--gold); border:1.5px solid var(--gold)}
   .mini-msg{font-size:14px; min-height:20px; margin:8px 0; line-height:1.5}
   .mini-row{display:flex; gap:6px; margin:6px 0}
   .mini-row button, #mini-refill{flex:1; background:rgba(243,233,210,.08); color:var(--cream);
@@ -419,18 +420,18 @@
         <p id="fb-ack" class="fb-ack hidden"></p>
       </div>
     </div>
-    <button id="mini-btn">🎰 バカラ</button>
+    <button id="mini-btn">🎰 ブラックジャック</button>
     <div id="mini-panel" class="hidden">
-      <div class="mini-head"><span>バカラ（ミニゲーム）</span><button id="mini-close" aria-label="閉じる">✕</button></div>
+      <div class="mini-head"><span>ブラックジャック</span><button id="mini-close" aria-label="閉じる">✕</button></div>
       <p class="mini-chips">チップ <b id="mini-chips">300</b></p>
-      <div><p class="mini-hname">バンカー <span id="mini-btot"></span></p><div class="mini-cards" id="mini-bcards"></div></div>
-      <div><p class="mini-hname">プレイヤー <span id="mini-ptot"></span></p><div class="mini-cards" id="mini-pcards"></div></div>
-      <p id="mini-msg" class="mini-msg">賭け先と金額を選んで「配る」</p>
-      <div class="mini-row" id="mini-targets">
-        <button data-t="P">プレイヤー</button><button data-t="B">バンカー</button><button data-t="T">タイ</button>
-      </div>
+      <div><p class="mini-hname">ディーラー <span id="mini-dtot"></span></p><div class="mini-cards" id="mini-dcards"></div></div>
+      <div><p class="mini-hname">あなた <span id="mini-ptot"></span></p><div class="mini-cards" id="mini-pcards"></div></div>
+      <p id="mini-msg" class="mini-msg">金額を選んで「配る」</p>
       <div class="mini-row" id="mini-amounts">
         <button data-a="10">10</button><button data-a="50">50</button><button data-a="100">100</button>
+      </div>
+      <div class="mini-row hidden" id="mini-actions">
+        <button id="mini-hit">ヒット</button><button id="mini-stand">スタンド</button>
       </div>
       <button id="mini-deal">配る</button>
       <button id="mini-refill" class="hidden">チップを補充する</button>
@@ -1381,11 +1382,17 @@ function openResultDetail(idx){
 $("btn-detail-close").addEventListener("click", () => $("result-detail").classList.add("hidden"));
 $("result-detail").addEventListener("click", e => { if (e.target === $("result-detail")) $("result-detail").classList.add("hidden"); });
 
-/* ===== ミニゲーム：バカラ（待ち時間用・閉じても続きから遊べる） ===== */
+/* ===== ミニゲーム：ブラックジャック（待ち時間用・閉じても続きから遊べる） ===== */
 const MINI_START_CHIPS = 300;
-const mini = { chips: MINI_START_CHIPS, target: "P", amount: 50, pHand: [], bHand: [], msg: "賭け先と金額を選んで「配る」", busy: false, done: false, timers: [] };
-function miniVal(r){ return r === "A" ? 1 : ("JQK".includes(r) ? 0 : (r === "10" ? 0 : parseInt(r, 10))); }
-function miniTotal(hand){ return hand.reduce((sum, c) => sum + c.v, 0) % 10; }
+const mini = { chips: MINI_START_CHIPS, amount: 50, pHand: [], dHand: [], msg: "金額を選んで「配る」", phase: "bet", revealed: false, timers: [] };
+let miniShoe = [];
+function miniVal(r){ return r === "A" ? 11 : ("JQK".includes(r) ? 10 : parseInt(r, 10)); }
+function miniTotal(hand){
+  let t = hand.reduce((sum, c) => sum + c.v, 0);
+  let aces = hand.filter(c => c.r === "A").length;
+  while (t > 21 && aces > 0) { t -= 10; aces--; }
+  return t;
+}
 function miniDeck(){
   const suits = ["♠", "♥", "♦", "♣"], ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
   const d = [];
@@ -1393,88 +1400,104 @@ function miniDeck(){
   for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = d[i]; d[i] = d[j]; d[j] = t; }
   return d;
 }
+function miniDraw(){ if (!miniShoe.length) miniShoe = miniDeck(); return miniShoe.pop(); }
 function miniCardHTML(c){ return `<span class="mini-card ${c.s === "♥" || c.s === "♦" ? "red" : ""}">${c.r}${c.s}</span>`; }
 function miniRender(){
   $("mini-chips").textContent = mini.chips;
-  $("mini-bcards").innerHTML = mini.bHand.map(miniCardHTML).join("");
+  $("mini-dcards").innerHTML = mini.dHand.map((c, i) => (!mini.revealed && i === 1) ? `<span class="mini-card back">✦</span>` : miniCardHTML(c)).join("");
   $("mini-pcards").innerHTML = mini.pHand.map(miniCardHTML).join("");
-  $("mini-btot").textContent = mini.done && mini.bHand.length ? `合計 ${miniTotal(mini.bHand)}` : "";
-  $("mini-ptot").textContent = mini.done && mini.pHand.length ? `合計 ${miniTotal(mini.pHand)}` : "";
+  $("mini-dtot").textContent = !mini.dHand.length ? "" : (mini.revealed ? `合計 ${miniTotal(mini.dHand)}` : `合計 ${mini.dHand[0].v} ＋ ？`);
+  $("mini-ptot").textContent = mini.pHand.length ? `合計 ${miniTotal(mini.pHand)}` : "";
   $("mini-msg").textContent = mini.msg;
-  for (const b of $("mini-targets").querySelectorAll("button")) b.classList.toggle("on", b.dataset.t === mini.target);
   for (const b of $("mini-amounts").querySelectorAll("button")) b.classList.toggle("on", parseInt(b.dataset.a, 10) === mini.amount);
-  $("mini-deal").disabled = mini.busy;
-  $("mini-refill").classList.toggle("hidden", !(mini.chips < 10 && !mini.busy));
+  const inTurn = mini.phase === "player";
+  $("mini-actions").classList.toggle("hidden", !inTurn);
+  $("mini-deal").classList.toggle("hidden", inTurn || mini.phase === "dealer");
+  $("mini-deal").textContent = mini.phase === "done" ? "もう一回 配る" : "配る";
+  $("mini-refill").classList.toggle("hidden", !(mini.chips < 10 && (mini.phase === "bet" || mini.phase === "done")));
 }
-function miniBankerDraws(bTotal, pThird){
-  if (pThird === null) return bTotal <= 5;
-  const v = pThird.v;
-  if (bTotal <= 2) return true;
-  if (bTotal === 3) return v !== 8;
-  if (bTotal === 4) return v >= 2 && v <= 7;
-  if (bTotal === 5) return v >= 4 && v <= 7;
-  if (bTotal === 6) return v === 6 || v === 7;
-  return false;
+function miniSettle(natural){
+  const pT = miniTotal(mini.pHand), dT = miniTotal(mini.dHand);
+  const pBJ = natural && pT === 21, dBJ = natural && dT === 21;
+  let gain = 0, label = "";
+  if (pBJ && dBJ) { label = "両方ブラックジャック（引き分け）"; gain = mini.amount; }
+  else if (pBJ) { label = "ブラックジャック！"; gain = mini.amount + Math.floor(mini.amount * 1.5); }
+  else if (dBJ) { label = `ディーラーのブラックジャック（${dT} 対 ${pT}）`; }
+  else if (pT > 21) { label = `バスト（${pT}）…`; }
+  else if (dT > 21) { label = `ディーラーがバスト（${dT}）！あなたの勝ち`; gain = mini.amount * 2; }
+  else if (pT > dT) { label = `あなたの勝ち（${pT} 対 ${dT}）`; gain = mini.amount * 2; }
+  else if (pT < dT) { label = `ディーラーの勝ち（${dT} 対 ${pT}）`; }
+  else { label = `引き分け（${pT} 対 ${dT}）`; gain = mini.amount; }
+  mini.chips += gain;
+  const diff = gain - mini.amount;
+  mini.msg = label + (diff > 0 ? `　+${diff}！` : (diff === 0 ? "　チップは戻った" : `　-${mini.amount}`));
+  mini.phase = "done";
+  miniRender();
+}
+function miniReveal(natural){
+  mini.phase = "dealer";
+  mini.revealed = true;
+  miniRender();
+  const step = () => {
+    if (miniTotal(mini.dHand) < 17) {
+      mini.dHand.push(miniDraw());
+      miniRender();
+      mini.timers.push(setTimeout(step, 520));
+    } else {
+      miniSettle(natural);
+    }
+  };
+  mini.timers.push(setTimeout(step, 520));
 }
 function miniDeal(){
-  if (mini.busy) return;
+  if (mini.phase === "player" || mini.phase === "dealer") return;
   if (mini.chips < mini.amount) { mini.msg = "チップが足りない。金額を下げてね"; miniRender(); return; }
   mini.chips -= mini.amount;
-  mini.busy = true; mini.done = false;
-  mini.pHand = []; mini.bHand = [];
-  mini.msg = "配っている…";
-  const deck = miniDeck();
-  const steps = [
-    () => { mini.pHand = [deck.pop(), deck.pop()]; miniRender(); },
-    () => { mini.bHand = [deck.pop(), deck.pop()]; miniRender(); },
-    () => {
-      let pThird = null;
-      const pT = miniTotal(mini.pHand), bT = miniTotal(mini.bHand);
-      if (!(pT >= 8 || bT >= 8)) {
-        if (pT <= 5) { pThird = deck.pop(); mini.pHand.push(pThird); }
-        if (miniBankerDraws(miniTotal(mini.bHand), pThird)) mini.bHand.push(deck.pop());
-      }
-      miniRender();
-    },
-    () => {
-      const pT = miniTotal(mini.pHand), bT = miniTotal(mini.bHand);
-      const winner = pT > bT ? "P" : (bT > pT ? "B" : "T");
-      let gain = 0, label = "";
-      if (winner === "T") {
-        label = `タイ（${pT} 対 ${bT}）`;
-        gain = mini.target === "T" ? mini.amount * 9 : mini.amount;
-      } else if (winner === "P") {
-        label = `プレイヤーの勝ち（${pT} 対 ${bT}）`;
-        if (mini.target === "P") gain = mini.amount * 2;
-      } else {
-        label = `バンカーの勝ち（${bT} 対 ${pT}）`;
-        if (mini.target === "B") gain = mini.amount + Math.floor(mini.amount * 0.95);
-      }
-      mini.chips += gain;
-      const diff = gain - mini.amount;
-      mini.msg = label + (diff > 0 ? `　+${diff}！` : (diff === 0 ? "　チップは戻った" : `　-${mini.amount}`));
-      mini.busy = false; mini.done = true;
-      miniRender();
-    },
-  ];
+  mini.pHand = [miniDraw(), miniDraw()];
+  mini.dHand = [miniDraw(), miniDraw()];
+  mini.revealed = false;
+  const natural = miniTotal(mini.pHand) === 21 || miniTotal(mini.dHand) === 21;
+  if (natural) {
+    mini.msg = "配った。";
+    mini.phase = "dealer";
+    miniRender();
+    mini.timers.push(setTimeout(() => miniReveal(true), 650));
+  } else {
+    mini.phase = "player";
+    mini.msg = `あなたは ${miniTotal(mini.pHand)}。ヒットかスタンド？`;
+    miniRender();
+  }
+}
+function miniHit(){
+  if (mini.phase !== "player") return;
+  mini.pHand.push(miniDraw());
+  const t = miniTotal(mini.pHand);
+  if (t > 21) { mini.revealed = true; miniSettle(false); return; }
+  if (t === 21) { mini.msg = "21！ディーラーの番"; miniRender(); miniReveal(false); return; }
+  mini.msg = `あなたは ${t}。ヒットかスタンド？`;
   miniRender();
-  steps.forEach((fn, i) => { mini.timers.push(setTimeout(fn, 420 * (i + 1))); });
+}
+function miniStand(){
+  if (mini.phase !== "player") return;
+  miniReveal(false);
 }
 function resetMini(){
   for (const t of mini.timers) clearTimeout(t);
   mini.timers = [];
-  mini.chips = MINI_START_CHIPS; mini.target = "P"; mini.amount = 50;
-  mini.pHand = []; mini.bHand = []; mini.busy = false; mini.done = false;
-  mini.msg = "賭け先と金額を選んで「配る」";
+  mini.chips = MINI_START_CHIPS; mini.amount = 50;
+  mini.pHand = []; mini.dHand = []; mini.phase = "bet"; mini.revealed = false;
+  mini.msg = "金額を選んで「配る」";
+  miniShoe = [];
   const p = $("mini-panel"); if (p) p.classList.add("hidden");
   if ($("mini-chips")) miniRender();
 }
 $("mini-btn").addEventListener("click", () => { $("mini-panel").classList.toggle("hidden"); miniRender(); });
 $("mini-close").addEventListener("click", () => $("mini-panel").classList.add("hidden"));
 $("mini-deal").addEventListener("click", miniDeal);
-$("mini-refill").addEventListener("click", () => { mini.chips = MINI_START_CHIPS; mini.msg = "チップを補充した。賭け先と金額を選んで「配る」"; miniRender(); });
-for (const b of $("mini-targets").querySelectorAll("button")) b.addEventListener("click", () => { if (!mini.busy) { mini.target = b.dataset.t; miniRender(); } });
-for (const b of $("mini-amounts").querySelectorAll("button")) b.addEventListener("click", () => { if (!mini.busy) { mini.amount = parseInt(b.dataset.a, 10); miniRender(); } });
+$("mini-hit").addEventListener("click", miniHit);
+$("mini-stand").addEventListener("click", miniStand);
+$("mini-refill").addEventListener("click", () => { mini.chips = MINI_START_CHIPS; mini.msg = "チップを補充した。金額を選んで「配る」"; miniRender(); });
+for (const b of $("mini-amounts").querySelectorAll("button")) b.addEventListener("click", () => { if (mini.phase === "bet" || mini.phase === "done") { mini.amount = parseInt(b.dataset.a, 10); miniRender(); } });
 miniRender();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
