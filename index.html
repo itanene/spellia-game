@@ -1437,6 +1437,7 @@ function miniSettle(natural){
 function miniReveal(natural){
   mini.phase = "dealer";
   mini.revealed = true;
+  mini.msg = "ディーラーの番…";
   miniRender();
   const step = () => {
     if (miniTotal(mini.dHand) < 17) {
