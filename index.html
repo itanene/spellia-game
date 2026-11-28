@@ -78,7 +78,10 @@
     font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic",sans-serif}
   #mini-btn{position:fixed; right:10px; bottom:10px; z-index:64; background:rgba(4,18,24,.94);
     color:var(--cream); border:1.5px solid var(--gold); border-radius:999px; padding:8px 14px;
-    font-size:14px; letter-spacing:.06em; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.5)}
+    font-size:14px; letter-spacing:.06em; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.5);
+    touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
+  #mini-btn.dragging{transform:scale(1.15); outline:2px dashed var(--gold); outline-offset:2px; z-index:75; cursor:grabbing}
+  .mini-note{font-size:11.5px; color:var(--dim); margin:8px 0 0}
   #mini-panel{position:fixed; right:10px; bottom:54px; z-index:66; width:min(88vw,320px);
     background:rgba(4,18,24,.97); border:1.5px solid var(--gold); border-radius:14px;
     padding:12px 14px; box-shadow:0 12px 32px rgba(0,0,0,.65); color:var(--cream)}
@@ -104,6 +107,12 @@
     font-size:15px; padding:9px 4px; border:1px solid rgba(212,175,55,.5); border-radius:8px; cursor:pointer}
   #mini-deal:disabled{opacity:.45; cursor:default}
   #mini-refill{width:100%; margin-top:6px; flex:none}
+  @media (min-width:1080px){
+    #mini-btn{left:calc(50% + 452px); right:auto; bottom:24px; font-weight:700; letter-spacing:.08em}
+  }
+  @media (min-width:1560px){
+    #mini-panel{left:calc(50% + 452px); right:auto; bottom:68px}
+  }
   #flip-banner.summary{flex-direction:column; align-items:stretch; width:min(94vw,480px); max-height:82dvh}
   #flip-banner.summary > div{overflow-y:auto}
   .sum-row{display:flex; gap:11px; align-items:flex-start; padding:8px 0 4px}
@@ -420,7 +429,7 @@
         <p id="fb-ack" class="fb-ack hidden"></p>
       </div>
     </div>
-    <button id="mini-btn">🎰 ブラックジャック</button>
+    <button id="mini-btn">BF</button>
     <div id="mini-panel" class="hidden">
       <div class="mini-head"><span>ブラックジャック</span><button id="mini-close" aria-label="閉じる">✕</button></div>
       <p class="mini-chips">所持チップ <b id="mini-chips">300</b></p>
@@ -435,6 +444,7 @@
       </div>
       <button id="mini-deal">配る</button>
       <button id="mini-refill" class="hidden">チップを補充する</button>
+      <p class="mini-note">※ BFボタンは長押しで移動できる</p>
     </div>
   </section>
 
@@ -1490,9 +1500,68 @@ function resetMini(){
   mini.msg = "金額を選んで「配る」";
   miniShoe = [];
   const p = $("mini-panel"); if (p) p.classList.add("hidden");
+  const bb = $("mini-btn");
+  if (bb) { bb.style.left = ""; bb.style.top = ""; bb.style.right = ""; bb.style.bottom = ""; bb.classList.remove("dragging"); }
+  if (p) { p.style.left = ""; p.style.top = ""; p.style.right = ""; p.style.bottom = ""; }
+  bfDrag = null; bfSuppressClick = false;
   if ($("mini-chips")) miniRender();
 }
-$("mini-btn").addEventListener("click", () => { $("mini-panel").classList.toggle("hidden"); miniRender(); });
+$("mini-btn").addEventListener("click", () => {
+  if (bfSuppressClick) { bfSuppressClick = false; return; }
+  const opening = $("mini-panel").classList.contains("hidden");
+  $("mini-panel").classList.toggle("hidden");
+  if (opening) positionMiniPanel();
+  miniRender();
+});
+/* ===== BFボタン：長押しでドラッグ移動 ===== */
+let bfDrag = null, bfSuppressClick = false;
+function positionMiniPanel(){
+  const b = $("mini-btn"), p = $("mini-panel");
+  if (!b.style.left) { p.style.left = ""; p.style.top = ""; p.style.right = ""; p.style.bottom = ""; return; }
+  const r = b.getBoundingClientRect();
+  const pw = Math.min(window.innerWidth * 0.88, 320);
+  const ph = p.offsetHeight || 380;
+  const x = Math.min(Math.max(6, r.right - pw), window.innerWidth - pw - 6);
+  const y = r.top > window.innerHeight / 2 ? Math.max(6, r.top - ph - 10) : Math.min(window.innerHeight - ph - 6, r.bottom + 10);
+  p.style.left = x + "px"; p.style.top = y + "px"; p.style.right = "auto"; p.style.bottom = "auto";
+}
+$("mini-btn").addEventListener("pointerdown", (e) => {
+  const r = $("mini-btn").getBoundingClientRect();
+  bfDrag = { startX: e.clientX, startY: e.clientY, left: r.left, top: r.top, active: false, timer: null };
+  bfDrag.timer = setTimeout(() => {
+    if (!bfDrag) return;
+    bfDrag.active = true;
+    const b = $("mini-btn");
+    b.classList.add("dragging");
+    b.style.left = bfDrag.left + "px"; b.style.top = bfDrag.top + "px";
+    b.style.right = "auto"; b.style.bottom = "auto";
+  }, 380);
+});
+window.addEventListener("pointermove", (e) => {
+  if (!bfDrag) return;
+  if (!bfDrag.active) {
+    if (Math.hypot(e.clientX - bfDrag.startX, e.clientY - bfDrag.startY) > 9) { clearTimeout(bfDrag.timer); bfDrag = null; }
+    return;
+  }
+  const b = $("mini-btn");
+  const nx = Math.min(Math.max(0, bfDrag.left + (e.clientX - bfDrag.startX)), window.innerWidth - b.offsetWidth);
+  const ny = Math.min(Math.max(0, bfDrag.top + (e.clientY - bfDrag.startY)), window.innerHeight - b.offsetHeight);
+  b.style.left = nx + "px"; b.style.top = ny + "px";
+  e.preventDefault();
+}, { passive: false });
+function bfPointerEnd(){
+  if (!bfDrag) return;
+  clearTimeout(bfDrag.timer);
+  const wasActive = bfDrag.active;
+  bfDrag = null;
+  $("mini-btn").classList.remove("dragging");
+  if (wasActive) {
+    bfSuppressClick = true;
+    if (!$("mini-panel").classList.contains("hidden")) positionMiniPanel();
+  }
+}
+window.addEventListener("pointerup", bfPointerEnd);
+window.addEventListener("pointercancel", bfPointerEnd);
 $("mini-close").addEventListener("click", () => $("mini-panel").classList.add("hidden"));
 $("mini-deal").addEventListener("click", miniDeal);
 $("mini-hit").addEventListener("click", miniHit);
