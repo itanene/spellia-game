@@ -76,6 +76,33 @@
   .fx-row .fx-name{font-size:16px; color:var(--cream); letter-spacing:.08em; margin:0}
   .fx-row .fx-text{font-size:14px; color:var(--ink); line-height:1.5; margin:1px 0 4px;
     font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic",sans-serif}
+  #mini-btn{position:fixed; right:10px; bottom:10px; z-index:64; background:rgba(4,18,24,.94);
+    color:var(--cream); border:1.5px solid var(--gold); border-radius:999px; padding:8px 14px;
+    font-size:14px; letter-spacing:.06em; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.5)}
+  #mini-panel{position:fixed; right:10px; bottom:54px; z-index:66; width:min(88vw,320px);
+    background:rgba(4,18,24,.97); border:1.5px solid var(--gold); border-radius:14px;
+    padding:12px 14px; box-shadow:0 12px 32px rgba(0,0,0,.65); color:var(--cream)}
+  .mini-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px}
+  .mini-head span{font-size:16px; letter-spacing:.1em; color:var(--gold)}
+  #mini-close{background:none; border:none; color:var(--cream); font-size:18px; cursor:pointer; padding:2px 6px}
+  .mini-chips{margin:0 0 8px; font-size:14px}
+  .mini-chips b{color:var(--gold); font-size:17px}
+  .mini-hname{margin:6px 0 4px; font-size:13px; color:var(--dim); letter-spacing:.08em}
+  .mini-hname span{color:var(--cream); font-size:14px}
+  .mini-cards{min-height:52px}
+  .mini-card{display:inline-flex; width:36px; height:50px; background:#f7f2e2; color:#20303a;
+    border-radius:6px; align-items:center; justify-content:center; font-weight:700; font-size:15px; margin-right:5px;
+    box-shadow:0 2px 6px rgba(0,0,0,.4)}
+  .mini-card.red{color:#b03a3a}
+  .mini-msg{font-size:14px; min-height:20px; margin:8px 0; line-height:1.5}
+  .mini-row{display:flex; gap:6px; margin:6px 0}
+  .mini-row button, #mini-refill{flex:1; background:rgba(243,233,210,.08); color:var(--cream);
+    border:1px solid rgba(212,175,55,.5); border-radius:8px; padding:7px 4px; font-size:13.5px; cursor:pointer}
+  .mini-row button.on{background:var(--gold); color:#20303a; font-weight:700}
+  #mini-deal{width:100%; margin-top:6px; background:var(--gold); color:#20303a; font-weight:700;
+    font-size:15px; padding:9px 4px; border:1px solid rgba(212,175,55,.5); border-radius:8px; cursor:pointer}
+  #mini-deal:disabled{opacity:.45; cursor:default}
+  #mini-refill{width:100%; margin-top:6px; flex:none}
   #flip-banner.summary{flex-direction:column; align-items:stretch; width:min(94vw,480px); max-height:82dvh}
   #flip-banner.summary > div{overflow-y:auto}
   .sum-row{display:flex; gap:11px; align-items:flex-start; padding:8px 0 4px}
@@ -391,6 +418,22 @@
         <p id="fb-next" class="fb-next hidden">― 右上の✕で次へ ―</p>
         <p id="fb-ack" class="fb-ack hidden"></p>
       </div>
+    </div>
+    <button id="mini-btn">🎰 バカラ</button>
+    <div id="mini-panel" class="hidden">
+      <div class="mini-head"><span>バカラ（ミニゲーム）</span><button id="mini-close" aria-label="閉じる">✕</button></div>
+      <p class="mini-chips">チップ <b id="mini-chips">300</b></p>
+      <div><p class="mini-hname">バンカー <span id="mini-btot"></span></p><div class="mini-cards" id="mini-bcards"></div></div>
+      <div><p class="mini-hname">プレイヤー <span id="mini-ptot"></span></p><div class="mini-cards" id="mini-pcards"></div></div>
+      <p id="mini-msg" class="mini-msg">賭け先と金額を選んで「配る」</p>
+      <div class="mini-row" id="mini-targets">
+        <button data-t="P">プレイヤー</button><button data-t="B">バンカー</button><button data-t="T">タイ</button>
+      </div>
+      <div class="mini-row" id="mini-amounts">
+        <button data-a="10">10</button><button data-a="50">50</button><button data-a="100">100</button>
+      </div>
+      <button id="mini-deal">配る</button>
+      <button id="mini-refill" class="hidden">チップを補充する</button>
     </div>
   </section>
 
@@ -751,6 +794,7 @@ $("btn-quit").addEventListener("click", () => showTitle());
 
 function showTitle() {
   clearFxPanel();
+  resetMini();
   $("screen-title").classList.remove("hidden");
   $("screen-game").classList.add("hidden");
   $("screen-result").classList.add("hidden");
@@ -846,7 +890,7 @@ function startGame() {
   $("screen-lobby").classList.add("hidden");
   $("screen-game").classList.remove("hidden");
   $("mode-label").textContent = "めくる人：時計回り";
-  $("log").innerHTML = ""; clearFxPanel();
+  $("log").innerHTML = ""; clearFxPanel(); resetMini();
   addLog(`<span class="hd">試験開始。</span>最初の親は ${st.players[st.parent].name}。`);
   nextTurn();
 }
@@ -1269,6 +1313,7 @@ async function finishFlipping() {
 }
 function showResult() {
   clearFxPanel();
+  resetMini();
   $("screen-game").classList.add("hidden");
   $("screen-result").classList.remove("hidden");
   const order = st.players.slice().sort((a, b) => b.pts - a.pts);
@@ -1335,6 +1380,102 @@ function openResultDetail(idx){
 }
 $("btn-detail-close").addEventListener("click", () => $("result-detail").classList.add("hidden"));
 $("result-detail").addEventListener("click", e => { if (e.target === $("result-detail")) $("result-detail").classList.add("hidden"); });
+
+/* ===== ミニゲーム：バカラ（待ち時間用・閉じても続きから遊べる） ===== */
+const MINI_START_CHIPS = 300;
+const mini = { chips: MINI_START_CHIPS, target: "P", amount: 50, pHand: [], bHand: [], msg: "賭け先と金額を選んで「配る」", busy: false, done: false, timers: [] };
+function miniVal(r){ return r === "A" ? 1 : ("JQK".includes(r) ? 0 : (r === "10" ? 0 : parseInt(r, 10))); }
+function miniTotal(hand){ return hand.reduce((sum, c) => sum + c.v, 0) % 10; }
+function miniDeck(){
+  const suits = ["♠", "♥", "♦", "♣"], ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+  const d = [];
+  for (const su of suits) for (const r of ranks) d.push({ r, s: su, v: miniVal(r) });
+  for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = d[i]; d[i] = d[j]; d[j] = t; }
+  return d;
+}
+function miniCardHTML(c){ return `<span class="mini-card ${c.s === "♥" || c.s === "♦" ? "red" : ""}">${c.r}${c.s}</span>`; }
+function miniRender(){
+  $("mini-chips").textContent = mini.chips;
+  $("mini-bcards").innerHTML = mini.bHand.map(miniCardHTML).join("");
+  $("mini-pcards").innerHTML = mini.pHand.map(miniCardHTML).join("");
+  $("mini-btot").textContent = mini.done && mini.bHand.length ? `合計 ${miniTotal(mini.bHand)}` : "";
+  $("mini-ptot").textContent = mini.done && mini.pHand.length ? `合計 ${miniTotal(mini.pHand)}` : "";
+  $("mini-msg").textContent = mini.msg;
+  for (const b of $("mini-targets").querySelectorAll("button")) b.classList.toggle("on", b.dataset.t === mini.target);
+  for (const b of $("mini-amounts").querySelectorAll("button")) b.classList.toggle("on", parseInt(b.dataset.a, 10) === mini.amount);
+  $("mini-deal").disabled = mini.busy;
+  $("mini-refill").classList.toggle("hidden", !(mini.chips < 10 && !mini.busy));
+}
+function miniBankerDraws(bTotal, pThird){
+  if (pThird === null) return bTotal <= 5;
+  const v = pThird.v;
+  if (bTotal <= 2) return true;
+  if (bTotal === 3) return v !== 8;
+  if (bTotal === 4) return v >= 2 && v <= 7;
+  if (bTotal === 5) return v >= 4 && v <= 7;
+  if (bTotal === 6) return v === 6 || v === 7;
+  return false;
+}
+function miniDeal(){
+  if (mini.busy) return;
+  if (mini.chips < mini.amount) { mini.msg = "チップが足りない。金額を下げてね"; miniRender(); return; }
+  mini.chips -= mini.amount;
+  mini.busy = true; mini.done = false;
+  mini.pHand = []; mini.bHand = [];
+  mini.msg = "配っている…";
+  const deck = miniDeck();
+  const steps = [
+    () => { mini.pHand = [deck.pop(), deck.pop()]; miniRender(); },
+    () => { mini.bHand = [deck.pop(), deck.pop()]; miniRender(); },
+    () => {
+      let pThird = null;
+      const pT = miniTotal(mini.pHand), bT = miniTotal(mini.bHand);
+      if (!(pT >= 8 || bT >= 8)) {
+        if (pT <= 5) { pThird = deck.pop(); mini.pHand.push(pThird); }
+        if (miniBankerDraws(miniTotal(mini.bHand), pThird)) mini.bHand.push(deck.pop());
+      }
+      miniRender();
+    },
+    () => {
+      const pT = miniTotal(mini.pHand), bT = miniTotal(mini.bHand);
+      const winner = pT > bT ? "P" : (bT > pT ? "B" : "T");
+      let gain = 0, label = "";
+      if (winner === "T") {
+        label = `タイ（${pT} 対 ${bT}）`;
+        gain = mini.target === "T" ? mini.amount * 9 : mini.amount;
+      } else if (winner === "P") {
+        label = `プレイヤーの勝ち（${pT} 対 ${bT}）`;
+        if (mini.target === "P") gain = mini.amount * 2;
+      } else {
+        label = `バンカーの勝ち（${bT} 対 ${pT}）`;
+        if (mini.target === "B") gain = mini.amount + Math.floor(mini.amount * 0.95);
+      }
+      mini.chips += gain;
+      const diff = gain - mini.amount;
+      mini.msg = label + (diff > 0 ? `　+${diff}！` : (diff === 0 ? "　チップは戻った" : `　-${mini.amount}`));
+      mini.busy = false; mini.done = true;
+      miniRender();
+    },
+  ];
+  miniRender();
+  steps.forEach((fn, i) => { mini.timers.push(setTimeout(fn, 420 * (i + 1))); });
+}
+function resetMini(){
+  for (const t of mini.timers) clearTimeout(t);
+  mini.timers = [];
+  mini.chips = MINI_START_CHIPS; mini.target = "P"; mini.amount = 50;
+  mini.pHand = []; mini.bHand = []; mini.busy = false; mini.done = false;
+  mini.msg = "賭け先と金額を選んで「配る」";
+  const p = $("mini-panel"); if (p) p.classList.add("hidden");
+  if ($("mini-chips")) miniRender();
+}
+$("mini-btn").addEventListener("click", () => { $("mini-panel").classList.toggle("hidden"); miniRender(); });
+$("mini-close").addEventListener("click", () => $("mini-panel").classList.add("hidden"));
+$("mini-deal").addEventListener("click", miniDeal);
+$("mini-refill").addEventListener("click", () => { mini.chips = MINI_START_CHIPS; mini.msg = "チップを補充した。賭け先と金額を選んで「配る」"; miniRender(); });
+for (const b of $("mini-targets").querySelectorAll("button")) b.addEventListener("click", () => { if (!mini.busy) { mini.target = b.dataset.t; miniRender(); } });
+for (const b of $("mini-amounts").querySelectorAll("button")) b.addEventListener("click", () => { if (!mini.busy) { mini.amount = parseInt(b.dataset.a, 10); miniRender(); } });
+miniRender();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
@@ -1511,7 +1652,7 @@ function guestOnData(d) {
     $("screen-lobby").classList.add("hidden");
     $("screen-game").classList.remove("hidden");
     $("mode-label").textContent = "ネット対戦　部屋 " + roomCode;
-    $("log").innerHTML = ""; clearFxPanel();
+    $("log").innerHTML = ""; clearFxPanel(); resetMini();
     addLog(`<span class="hd">ネット対戦開始。</span>`);
   }
   else if (d.t === "state") applySnap(d);
@@ -1552,7 +1693,7 @@ function netStartGame() {
   $("screen-result").classList.add("hidden");
   $("screen-game").classList.remove("hidden");
   $("mode-label").textContent = "ネット対戦　部屋 " + roomCode;
-  $("log").innerHTML = ""; clearFxPanel();
+  $("log").innerHTML = ""; clearFxPanel(); resetMini();
   addLog(`<span class="hd">ネット対戦開始。</span>最初の親は ${st.players[st.parent].name}。`);
   for (const seat in guestConns) { const c = guestConns[seat]; if (c && c.open) c.send({ t: "start" }); }
   netNextTurn();
